@@ -83,7 +83,7 @@ void audioFrame(uint16_t buffer_offset)
 {
 	uint16_t i = 0;
 	int16_t current_sample = 0;
-	//tSawtoothSetFreq(osc[i], 100.0f);
+	tSawtoothSetFreq(osc[i], 100.0f);
 /*
 	frameCounter++;
 	if (frameCounter >= 1)
@@ -132,16 +132,16 @@ float audioTickL(float audioIn)
 	{
 		if (tPolyphonicHandlerGetMidiNote(poly, i)->on == OTRUE)
 		{
-			sample += tSawtoothTick(osc[i]);
+			//sample += tSawtoothTick(osc[i]);
 		}
 	}
 
 	//sample = tSawtoothTick(osc[0]);
-	//sample = audioIn;
-	sample *= .25f;
+	sample = audioIn;
+	//sample *= .25f;
 
-	sample = tTalkboxTick(vocoder, sample, audioIn);
-	sample = OOPS_softClip(sample, 0.98f);
+	//sample = tTalkboxTick(vocoder, sample, audioIn);
+	//sample = OOPS_softClip(sample, 0.98f);
 	//sample *= myVol;
 	//sample = audioIn;
 	return sample;
