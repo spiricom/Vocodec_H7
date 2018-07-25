@@ -54,7 +54,7 @@
 //#include "usbh_audio.h"
 #include "usbh_MIDI.h"
 #include "MIDI_application.h"
-
+#include "tim.h"
 
 /* USER CODE BEGIN Includes */
 
@@ -108,12 +108,12 @@ void MX_USB_HOST_Init(void)
   USBH_Init(&hUsbHostFS, USBH_UserProcess, HOST_FS);
 
 
-	USBH_RegisterClass(&hUsbHostFS, USBH_MIDI_CLASS);
+  USBH_RegisterClass(&hUsbHostFS, USBH_MIDI_CLASS);
 
-USBH_Start(&hUsbHostFS);
+  USBH_Start(&hUsbHostFS);
 
   /* USER CODE BEGIN USB_HOST_Init_PostTreatment */
-  //HAL_PWREx_EnableUSBVoltageDetector();
+  HAL_PWREx_EnableUSBVoltageDetector();
   /* USER CODE END USB_HOST_Init_PostTreatment */
 }
 
@@ -139,7 +139,8 @@ static void USBH_UserProcess  (USBH_HandleTypeDef *phost, uint8_t id)
 
 	case HOST_USER_DISCONNECTION:
 		Appli_state = APPLICATION_DISCONNECT;
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_SET);  //LED4
+		__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 3000);//led4 (red)
+		__HAL_TIM_SET_COMPARE(&htim8, TIM_CHANNEL_1, 0); //led1 (bottom green)
 		break;
 
 	case HOST_USER_CLASS_ACTIVE:
@@ -150,7 +151,10 @@ static void USBH_UserProcess  (USBH_HandleTypeDef *phost, uint8_t id)
 
 	case HOST_USER_CONNECTION:
 		Appli_state = APPLICATION_START;
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET);  //LED1
+		__HAL_TIM_SET_COMPARE(&htim8, TIM_CHANNEL_1, 100); //led1 (bottom green)
+		__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 0);//led4 (red)
+
+		//HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET);  //LED1
 		break;
 
 	default:

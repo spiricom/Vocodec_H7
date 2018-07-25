@@ -20,9 +20,11 @@
 
 OOPS oops;
 
-void OOPSInit(float sr, float(*random)(void))
+void OOPSInit(float sr, int blocksize, float(*random)(void))
 {
     oops.sampleRate = sr;
+    
+    oops.blockSize = blocksize;
     
     oops.invSampleRate = 1.0f/sr;
     
@@ -111,6 +113,18 @@ void OOPSSetSampleRate(float sampleRate)
     
 #if N_COMPRESSOR
         for (int i = 0; i < oops.registryIndex[T_COMPRESSOR]; i++)         OOPSSampleRateChanged(tCompressorRegistry[i]);
+#endif
+    
+#if N_LOCKHARTWAVEFOLDER
+    for (int i = 0; i < oops.registryIndex[T_LOCKHARTWAVEFOLDER]; i++)     OOPSSampleRateChanged(tLockhartWavefolderRegistry[i]);
+#endif
+    
+#if N_FORMANTSHIFTER
+    for(int i = 0; i < oops.registryIndex[T_FORMANTSHIFTER]; i++)   OOPSSampleRateChanged(tFormantShifterRegistry[i]);
+#endif
+    
+#if N_PITCHSHIFTER
+    for(int i = 0; i < oops.registryIndex[T_PITCHSHIFTER]; i++)   OOPSSampleRateChanged(tPitchShifterRegistry[i]);
 #endif
 }
 

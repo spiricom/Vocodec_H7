@@ -28,7 +28,7 @@ float sample = 0.0f;
 
 float adcx[8];
 
-float detuneMax = 16.0f;
+float detuneMax = 3.0f;
 uint8_t audioInCV = 0;
 uint8_t audioInCVAlt = 0;
 float myVol = 0.0f;
@@ -52,14 +52,13 @@ typedef enum BOOL {
 void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTypeDef* hsaiIn, RNG_HandleTypeDef* hrand, uint16_t* myADCArray)
 { 
 	// Initialize the audio library. OOPS.
-	OOPSInit(SAMPLE_RATE, &randomNumber);
-	
+	OOPSInit(SAMPLE_RATE, AUDIO_FRAME_SIZE, &randomNumber);
+
 	//now to send all the necessary messages to the codec
 	AudioCodec_init(hi2c);
 
 	HAL_Delay(100);
 
-	poly = tPolyphonicHandlerInit();
 	adcVals = myADCArray;
 	for (int i = 0; i < NUM_OSC; i++)
 	{
@@ -67,13 +66,11 @@ void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTy
 		tSawtoothSetFreq(osc[i], (randomNumber() * 2000.0f) + 40.0f);
 		detuneAmounts[i] = (randomNumber() * detuneMax) - (detuneMax * 0.5f);
 	}
-	vocoder = tTalkboxInit();
-	sine = tCycleInit();
 
 	// set up the I2S driver to send audio data to the codec (and retrieve input as well)	
 	transmit_status = HAL_SAI_Transmit_DMA(hsaiOut, (uint8_t *)&audioOutBuffer[0], AUDIO_BUFFER_SIZE);
 	receive_status = HAL_SAI_Receive_DMA(hsaiIn, (uint8_t *)&audioInBuffer[0], AUDIO_BUFFER_SIZE);
-	
+
 
 }
 
@@ -84,44 +81,26 @@ void audioFrame(uint16_t buffer_offset)
 {
 	uint16_t i = 0;
 	int32_t current_sample = 0;
-	tSawtoothSetFreq(osc[i], 100.0f);
-	tCycleSetFreq(sine, 100.0f);
-/*
-	frameCounter++;
-	if (frameCounter >= 1)
+
+	for (int j = 0; j < NUM_OSC; j++)
 	{
-		frameCounter = 0;
-		buttonCheck();
+		{
+			tSawtoothSetFreq(osc[j], (float)((adcVals[j % 4] >> 6) + 200)+ detuneAmounts[j]);
+		}
 	}
-	*/
-/*
-	for (int i = 0; i < NUMPARAMS; i++)
-	{
-		//dropping the resolution of the knobs to allow for stable positions (by making the ADC only 8 bit)
-		adcx[i] = adcVals[i] / 256 * INV_TWO_TO_8;
-	}
-	*/
 
 	for (i = 0; i < (HALF_BUFFER_SIZE); i++)
 	{
 
-		if ((i & 1) == 0) {
+		if ((i & 1) == 0)
+		{
 			current_sample = (int32_t)(audioTickL((float) (audioInBuffer[buffer_offset + i] * INV_TWO_TO_31)) * TWO_TO_31);
-			/*
-			sampleCounter += 44000;
-			if (sampleCounter > 2147483647)
-			{
-				sampleCounter = -2147483647;
-			}
-			current_sample = sampleCounter;
-			*/
 		}
 		else
 		{
-			//current_sample = (int16_t)(audioTickR((float) (audioInBuffer[buffer_offset + i] * INV_TWO_TO_15)) * TWO_TO_15);
-			current_sample = 0;
-		}
+			//current_sample = (int32_t)(audioTickR((float) (audioInBuffer[buffer_offset + i] * INV_TWO_TO_31)) * TWO_TO_31);
 
+		}
 		audioOutBuffer[buffer_offset + i] = current_sample;
 	}
 }
@@ -134,52 +113,25 @@ float rightInput = 0.0f;
 
 float audioTickL(float audioIn) 
 {
-	//sample = 0.0f;
-	/*
-	for (int i = 0; i < 4; i++)
-	{
-		tCycleSetFreq(mySine[i], ((((float)adcVals[i]) * INV_TWO_TO_16) * 1000.0f) + 40.0f);
 
-	}
-	*/
+
+	sample = 0.0f;
 
 	for (int i = 0; i < NUM_OSC; i++)
 	{
-		if (tPolyphonicHandlerGetMidiNote(poly, i)->on == OTRUE)
-		{
-			//sample += tSawtoothTick(osc[i]);
-		}
+		sample += tSawtoothTick(osc[i]);
 	}
 
-	sampleCounter++;
+	sample *= 0.0625f;
+	sample = tanhf(sample); //nice soft clipper - probably expensive but seems to be OK
 
-	if (sampleCounter > 1000)
-	{
-		if (sample >= 0)
-		{
-			sample = -1.0f;
-		}
-		else
-		{
-			sample = 1.0f;
-		}
-		sampleCounter = 0;
-	}
+	//use the foot pedal as a volume control!
+	sample *= ((float)adcVals[4]) * INV_TWO_TO_16;
 
-
-	sample = tSawtoothTick(osc[0]);
-	sample = tCycleTick(sine);
-	sample = audioIn;
-	//sample *= 1.0f;
-
-	//sample = tTalkboxTick(vocoder, sample, audioIn);
-	//sample = OOPS_softClip(sample, 0.98f);
-	//sample *= myVol;
-	//sample = audioIn;
 	return sample;
 }
 
-float audioTickR(float audioIn) 
+float audioTickR(float audioIn)
 {
 	rightInput = audioIn;
 	//sample = audioIn;
@@ -212,7 +164,7 @@ void buttonCheck(void)
 
 	if (buttonPressed[0] == 1)
 	{
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET);
+		//HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET);
 		buttonPressed[0] = 0;
 
 	}
@@ -234,7 +186,7 @@ void buttonCheck(void)
 
 void HAL_SAI_ErrorCallback(SAI_HandleTypeDef *hsai)
 {
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
+	//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
 }
 
 void HAL_SAI_TxCpltCallback(SAI_HandleTypeDef *hsai)
@@ -250,15 +202,11 @@ void HAL_SAI_TxHalfCpltCallback(SAI_HandleTypeDef *hsai)
 
 void HAL_SAI_RxCpltCallback(SAI_HandleTypeDef *hsai)
 {
-	//doAudio = 2;
 	audioFrame(HALF_BUFFER_SIZE);
-	//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);;
 }
 
 void HAL_SAI_RxHalfCpltCallback(SAI_HandleTypeDef *hsai)
 {
-	//doAudio = 1;
 	audioFrame(0);
-	//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);;
 }
 

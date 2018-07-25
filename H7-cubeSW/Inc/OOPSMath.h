@@ -57,6 +57,8 @@ typedef enum oBool
 
 #define SOS_M 						343.0f
 
+#define TWO_TO_7 					128.f
+#define INV_TWO_TO_7 			0.0078125f
 #define TWO_TO_8 					256.f
 #define INV_TWO_TO_8 			0.00390625f
 #define TWO_TO_5 					32.0f
@@ -64,8 +66,8 @@ typedef enum oBool
 #define TWO_TO_12 				4096.f
 #define INV_TWO_TO_12 		0.00024414062f
 #define TWO_TO_15 				32768.f
-#define INV_TWO_TO_15 		0.000030517578125f
 #define TWO_TO_16 				65536.f
+#define INV_TWO_TO_15 		0.00003051757f
 #define INV_TWO_TO_16 		0.00001525878f
 #define TWO_TO_16_MINUS_ONE 65535.0f
 #define TWO_TO_23		8388608.0f
@@ -73,7 +75,7 @@ typedef enum oBool
 #define TWO_TO_31		2147483648.0f
 #define INV_TWO_TO_31	0.000000000465661f
 
-// Jones shaper
+// Erbe shaper
 float OOPS_shaper     (float input, float m_drive);
 float OOPS_reedTable  (float input, float offset, float slope);
 
@@ -87,6 +89,54 @@ float OOPS_chebyshevT(float in, int n);
 float OOPS_CompoundChebyshevT(float in, int n, float* amps);
 float OOPS_frequencyToMidi(float f);
 
+static inline float interpolate3max(float *buf, const int peakindex)
+{
+    float a = buf[peakindex-1];
+    float b = buf[peakindex];
+    float c = buf[peakindex+1];
+    float realpeak;
+    
+    realpeak = b + (float)0.125 * (c - a) * (c - a) / ((float)2. * b - a - c);
+    
+    return(realpeak);
+}
 
+static inline float interpolate3phase(float *buf, const int peakindex)
+{
+    float a = buf[peakindex-1];
+    float b = buf[peakindex];
+    float c = buf[peakindex+1];
+    float fraction;
+    
+    fraction = ((float)0.5 * (c - a)) / ((float)2. * b - a - c);
+    
+    return(fraction);
+}
+
+// alternative implementation for abs()
+// REQUIRES: 32 bit integers
+static inline int fastabs_int(int in){
+    unsigned int r;
+    int const mask = in >> 31;
+    
+    r = (in ^ mask) - mask;
+    
+    return (r);
+}
+
+// alternative implementation for abs()
+// REQUIRES: 32 bit floats
+static inline float fastabs(float f)
+{
+    union
+    {
+        float f;
+        unsigned int ui;
+    }alias;
+    
+    alias.f = f;
+    alias.ui &= 0x7fffffff;
+    return alias.f;
+}
 
 #endif  // OOPSMATH_H_INCLUDED

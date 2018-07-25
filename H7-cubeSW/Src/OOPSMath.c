@@ -25,6 +25,10 @@
 
 #define EXPONENTIAL_TABLE_SIZE 65536
 
+
+
+
+
 // dope af
 float OOPS_chebyshevT(float in, int n){
 	if (n == 0) return 1;
@@ -54,7 +58,7 @@ float OOPS_frequencyToMidi(float f)
 	return (69.0f + 12.0f * log2(f * INV_440));
 }
 
-// Jones shaper
+// Erbe shaper
 float OOPS_shaper(float input, float m_drive) 
 {
     float fx = input * 2.0f;    // prescale

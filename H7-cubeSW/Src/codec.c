@@ -23,7 +23,7 @@ void AudioCodec_init(I2C_HandleTypeDef* hi2c) {
  
 	//digital data format - I2S 
 	myI2cData[0] = 0x0e;
-  myI2cData[1] = 0x0e;   //0x0e for 32 bit, 0x02 for 16 bit, 0x0a for 24 bit
+  myI2cData[1] = 0x0e;  //0x02 for 16 bit, 0x0e for 32 bit
 	HAL_I2C_Master_Transmit(hi2c, CODEC_I2C_ADDRESS, myI2cData, i2cDataSize, I2Ctimeout);
 
   //left in setup register

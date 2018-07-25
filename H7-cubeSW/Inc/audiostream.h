@@ -33,10 +33,8 @@
 
 #include "OOPS.h"
 
-#define NUM_OSC 			4
+#define NUM_OSC 			64
 #define INV_NUM_OSC 		1.0f/NUM_OSC
-
-#define NUM_VOICES 8
 
 #define AUDIO_FRAME_SIZE     128
 #define HALF_BUFFER_SIZE      AUDIO_FRAME_SIZE * 2 //number of samples per half of the "double-buffer" (twice the audio frame size because there are interleaved samples for both left and right channels)
@@ -55,9 +53,7 @@ extern uint8_t doAudio;
 extern float detuneAmounts[NUM_OSC];
 extern float myVol;
 tSawtooth* osc[NUM_OSC];
-tCycle* sine;
-tPolyphonicHandler* poly;
-tTalkbox* vocoder;
+
 
 
 /* Exported types ------------------------------------------------------------*/
@@ -137,7 +133,7 @@ void audioFrame(uint16_t buffer_offset);
 
 void DMA1_TransferCpltCallback(DMA_HandleTypeDef *hdma);
 void DMA1_HalfTransferCpltCallback(DMA_HandleTypeDef *hdma);
-#endif /* __WAVEPLAYER_H */
+#endif /* __AUDIOSTREAM_H */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
 
