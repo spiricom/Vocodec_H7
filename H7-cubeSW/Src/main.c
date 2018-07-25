@@ -242,10 +242,12 @@ int main(void)
   GFXwrite(&theGFX,'F');
   GFXwrite(&theGFX,'T');
   */
-
+  OLEDwriteLine("FORMANT   ", 10, FirstLine);
+  /*
   OLEDwriteString("OH NOES", 7, 0, FirstLine);
   GFXsetFont(&theGFX, &URW_Gothic_L_Book_16);
   OLEDwriteString("IT ME", 5, 0, SecondLine);
+  */
   //OLEDwriteFixedFloatLine(8.463f, 4, 3, FirstLine);
   //GFXsetCursor(&theGFX, 100,16);
   //GFXwriteFastHLine(&theGFX, 0, 24,
@@ -284,7 +286,18 @@ int main(void)
 
 	  if (counter >= 200)
 	  {
-
+		  if (mode == FormantShiftMode)
+		  {
+			  GFXfillRect(&theGFX, 0, 16, 128, 16, 0);
+			  int emojiIndex = (int)(formantShiftFactor * 9);
+			  int pixel = (int)(formantShiftFactor * 9 * 12);
+			  if (pixel > 104) pixel = 104;
+			  OLEDwriteString(formantEmojis[emojiIndex], 10, pixel%12 , SecondLine);
+		  }
+		  else if (mode == PitchShiftMode)
+		  {
+			  OLEDwriteFixedFloatLine(pitchFactor, 9, 2, SecondLine);
+		  }
 		  buttonCheck(); // should happen here, not frame, or else interrupts audio processing
 		  counter = 0;
 	  }

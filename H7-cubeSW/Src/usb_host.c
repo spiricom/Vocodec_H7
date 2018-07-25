@@ -54,7 +54,7 @@
 //#include "usbh_audio.h"
 #include "usbh_MIDI.h"
 #include "MIDI_application.h"
-#include "tim.h"
+
 
 /* USER CODE BEGIN Includes */
 
@@ -62,7 +62,7 @@
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-USBH_HandleTypeDef hUsbHostFS __ATTR_RAM_D2;
+USBH_HandleTypeDef hUsbHostFS;
 ApplicationTypeDef Appli_state = APPLICATION_IDLE;
 extern MIDI_ApplicationTypeDef MIDI_Appli_state;
 /* USER CODE END PV */
@@ -139,8 +139,7 @@ static void USBH_UserProcess  (USBH_HandleTypeDef *phost, uint8_t id)
 
 	case HOST_USER_DISCONNECTION:
 		Appli_state = APPLICATION_DISCONNECT;
-		__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 100); //led4 top red
-		__HAL_TIM_SET_COMPARE(&htim8, TIM_CHANNEL_1, 0); //top green
+		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_SET);  //LED4
 		break;
 
 	case HOST_USER_CLASS_ACTIVE:
@@ -152,8 +151,6 @@ static void USBH_UserProcess  (USBH_HandleTypeDef *phost, uint8_t id)
 	case HOST_USER_CONNECTION:
 		Appli_state = APPLICATION_START;
 		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET);  //LED1
-		__HAL_TIM_SET_COMPARE(&htim8, TIM_CHANNEL_1, 100); //top green
-		__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 0); //led4 top red
 		break;
 
 	default:

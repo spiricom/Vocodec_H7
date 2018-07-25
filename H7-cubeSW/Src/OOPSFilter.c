@@ -1084,6 +1084,7 @@ float tPitchShifter_tick(tPitchShifter* ps, float sample)
     i = (ps->curBlock*ps->frameSize);
     iLast = (ps->lastBlock*ps->frameSize)+ps->index;
 
+    out = tHighpassTick(ps->hp, ps->outBuffer[iLast]);
     ps->inBuffer[i+ps->index] = sample;
 
     ps->index++;
@@ -1113,8 +1114,6 @@ float tPitchShifter_tick(tPitchShifter* ps, float sample)
         if (ps->lastBlock >= ps->framesPerBuffer) ps->lastBlock = 0;
     }
 
-    out = tHighpassTick(ps->hp, ps->outBuffer[iLast]);
-
     return out;
 }
 
@@ -1126,6 +1125,7 @@ float tPitchShifterToFreq_tick(tPitchShifter* ps, float sample, float freq)
     i = (ps->curBlock*ps->frameSize);
     iLast = (ps->lastBlock*ps->frameSize)+ps->index;
     
+    out = tHighpassTick(ps->hp, ps->outBuffer[iLast]);
     ps->inBuffer[i+ps->index] = sample;
     
     ps->index++;
@@ -1155,8 +1155,6 @@ float tPitchShifterToFreq_tick(tPitchShifter* ps, float sample, float freq)
         ps->lastBlock++;
         if (ps->lastBlock >= ps->framesPerBuffer) ps->lastBlock = 0;
     }
-    
-    out = tHighpassTick(ps->hp, ps->outBuffer[iLast]);
 
     return out;
 }
@@ -1169,6 +1167,7 @@ float tPitchShifterToFunc_tick(tPitchShifter* ps, float sample, float (*fun)(flo
     i = (ps->curBlock*ps->frameSize);
     iLast = (ps->lastBlock*ps->frameSize)+ps->index;
 
+    out = tHighpassTick(ps->hp, ps->outBuffer[iLast]);
     ps->inBuffer[i+ps->index] = sample;
 
     ps->index++;
@@ -1198,8 +1197,6 @@ float tPitchShifterToFunc_tick(tPitchShifter* ps, float sample, float (*fun)(flo
         ps->lastBlock++;
         if (ps->lastBlock >= ps->framesPerBuffer) ps->lastBlock = 0;
     }
-
-    out = tHighpassTick(ps->hp, ps->outBuffer[iLast]);
 
     return out;
 }
