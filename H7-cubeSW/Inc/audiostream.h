@@ -33,7 +33,7 @@
 
 #include "OOPS.h"
 
-#define NUM_OSC 			64
+#define NUM_OSC 			4
 #define INV_NUM_OSC 		1.0f/NUM_OSC
 
 #define AUDIO_FRAME_SIZE     128

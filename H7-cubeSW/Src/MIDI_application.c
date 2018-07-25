@@ -16,7 +16,7 @@
 #include "usbh_core.h"
 #include "usbh_MIDI.h"
 #include "usb_host.h"
-
+#include "tim.h"
 MIDI_ApplicationTypeDef MIDI_Appli_state = MIDI_APPLICATION_READY;
 extern ApplicationTypeDef Appli_state;
 extern USBH_HandleTypeDef hUsbHostFS;
@@ -98,10 +98,15 @@ void ProcessReceivedMidiDatas(uint32_t myLength)
 				case (0xB0):
 					ctrl = pack.evnt1;
 					data = pack.evnt2;
+					__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, data);
 					switch(ctrl)
 					{
-						/*
+
+
 						case (0x01):
+								//__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, data);
+								break;
+											/*
 							for (int i = 0; i < 8; i++)
 							{
 								tCycleSetFreq(osc[i], ((((float)data) * INV_TWO_TO_7) * 1000.0f) + 100.0f + detuneAmounts[i]);

@@ -175,10 +175,9 @@ int main(void)
   MX_SAI1_Init();
   MX_SPI4_Init();
   MX_I2C4_Init();
-  //MX_USB_HOST_Init();
+  MX_USB_HOST_Init();
   MX_TIM3_Init();
   MX_TIM8_Init();
-
   /* USER CODE BEGIN 2 */
 
   /// when rebuilding from CubeMX, make sure to comment out original call to MX_USB_HOST_Init() so that this delayed version can happen later. That way the LEDs are initialized and the powersupply is stable.

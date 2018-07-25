@@ -1,7 +1,7 @@
 [PreviousGenFiles]
-HeaderPath=/Users/josnyder/dev/Vocodec_H7/H7-cubeSW/Inc
+HeaderPath=/Users/josnyder/dev/older_Vocodec_H7/Vocodec_H7/H7-cubeSW/Inc
 HeaderFiles=gpio.h;adc.h;dma.h;i2c.h;quadspi.h;rng.h;sai.h;spi.h;usb_otg.h;stm32h7xx_it.h;stm32h7xx_hal_conf.h;main.h;usb_host.h;usbh_conf.h;usbh_platform.h;bdma.h;tim.h;
-SourcePath=/Users/josnyder/dev/Vocodec_H7/H7-cubeSW/Src
+SourcePath=/Users/josnyder/dev/older_Vocodec_H7/Vocodec_H7/H7-cubeSW/Src
 SourceFiles=gpio.c;adc.c;dma.c;i2c.c;quadspi.c;rng.c;sai.c;spi.c;usb_otg.c;stm32h7xx_it.c;stm32h7xx_hal_msp.c;main.c;usb_host.c;usbh_conf.c;usbh_platform.c;bdma.c;tim.c;
 
 [PreviousLibFiles]
