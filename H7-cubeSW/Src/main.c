@@ -289,8 +289,8 @@ int main(void)
 		  if (mode == FormantShiftMode)
 		  {
 			  GFXfillRect(&theGFX, 0, 16, 128, 16, 0);
-			  int emojiIndex = (int)(formantShiftFactor * 9);
-			  int pixel = (int)(formantShiftFactor * 9 * 12);
+			  int emojiIndex = (int)(formantKnob * 9);
+			  int pixel = (int)(formantKnob * 9 * 12);
 			  if (pixel > 104) pixel = 104;
 			  OLEDwriteString(formantEmojis[emojiIndex], 10, pixel%12 , SecondLine);
 		  }

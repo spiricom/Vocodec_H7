@@ -37,11 +37,10 @@ void buttonCheck(void);
 HAL_StatusTypeDef transmit_status;
 HAL_StatusTypeDef receive_status;
 
-float inBuffer[NUM_SHIFTERS][4096];
-float outBuffer[NUM_SHIFTERS][4096];
+float inBuffer[NUM_SHIFTERS][2048];
+float outBuffer[NUM_SHIFTERS][2048];
 
-tFormantShifter* fs;
-tFormantShifter* fs2;
+tFormantShifter* fs[NUM_SHIFTERS];
 tPitchShifter* ps[NUM_SHIFTERS];
 tRamp* ramp[NUM_VOICES];
 tMPoly* mpoly;
@@ -52,7 +51,10 @@ VocodecMode mode = FormantShiftMode;
 AutotuneType atType = NearestType;
 
 float formantShiftFactor;
+float formantKnob;
 
+
+int activeVoices = 1;
 /* PSHIFT vars *************/
 
 int activeShifters = 1;
@@ -173,8 +175,7 @@ void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTy
 	{
 		notePeriods[i] = 1.0f / OOPS_midiToFrequency(i) * oops.sampleRate;
 	}
-	fs = tFormantShifterInit();
-	fs2 = tFormantShifterInit();
+
 	//now to send all the necessary messages to the codec
 	AudioCodec_init(hi2c);
 
@@ -183,7 +184,7 @@ void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTy
 	adcVals = myADCArray;
 
 	mpoly = tMPoly_init(activeShifters);
-	tMPoly_setPitchGlideTime(mpoly, 100.0f);
+	tMPoly_setPitchGlideTime(mpoly, 10.0f);
 
 	for (int i = 0; i < NUM_VOICES; i++)
 	{
@@ -200,10 +201,11 @@ void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTy
 	/* Initialize devices for pitch shifting */
 	for (int i = 0; i < NUM_SHIFTERS; ++i)
 	{
-		ps[i] = tPitchShifter_init(inBuffer[i], outBuffer[i], 4096, 1024);
+		ps[i] = tPitchShifter_init(inBuffer[i], outBuffer[i], 2048, 1024);
 		tPitchShifter_setWindowSize(ps[i], 1024);
 		tPitchShifter_setHopSize(ps[i], 256);
 		tPitchShifter_setPitchFactor(ps[i], 1.0f);
+		fs[i] = tFormantShifterInit();
 	}
 }
 
@@ -211,27 +213,35 @@ int numSamples = AUDIO_FRAME_SIZE;
 
 void audioFrame(uint16_t buffer_offset)
 {
-	float input, output;
+	float input, sample, output, output2, mix;
 
 	if (mode == FormantShiftMode)
 	{
 		for (int cc=0; cc < numSamples; cc++)
 		{
-			input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31);
+			input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31 * 2);
 
-			audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) (tFormantShifterTick(fs, input, -1.0) * TWO_TO_31);
+			formantKnob = adcVals[1] * INV_TWO_TO_16;
+			formantShiftFactor = (formantKnob * 2.0f) - 1.0f;
+			audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) (tFormantShifterTick(fs[0], input, formantShiftFactor) * TWO_TO_31);
 		}
 	}
 	else if (mode == PitchShiftMode)
 	{
 		for (int cc=0; cc < numSamples; cc++)
 		{
-			input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31);
+			input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31 * 2);
 
-			pitchFactor = (adcVals[1] * INV_TWO_TO_16) * 3.5f + 0.5f;
+			pitchFactor = (adcVals[3] * INV_TWO_TO_16) * 3.55f + 0.45f;
+			formantKnob = adcVals[1] * INV_TWO_TO_16;
+			formantShiftFactor = (formantKnob * 2.0f) - 1.0f;
 			tPitchShifter_setPitchFactor(ps[0], pitchFactor);
 
-			audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) (tPitchShifter_tick(ps[0], input) * TWO_TO_31);
+			output = tFormantShifterRemove(fs[0], input);
+
+			output = tPitchShifter_tick(ps[0], output);
+
+			audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) (tFormantShifterAdd(fs[0], output, formantShiftFactor) * TWO_TO_31);
 		}
 	}
 	else if (mode == AutotuneMode)
@@ -240,9 +250,18 @@ void audioFrame(uint16_t buffer_offset)
 		{
 			for (int cc=0; cc < numSamples; cc++)
 			{
-				input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31);
+				input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31 * 2);
 
-				audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) (tPitchShifterToFunc_tick(ps[0], input, nearestPeriod) * TWO_TO_31);
+				if ((adcVals[1]  * INV_TWO_TO_16) > 0.5f)
+				{
+					output = tFormantShifterRemove(fs[0], input);
+					output = tPitchShifterToFunc_tick(ps[0], output, nearestPeriod);
+					audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) (tFormantShifterAdd(fs[0], output, 0.0f) * TWO_TO_31);
+				}
+				else
+				{
+					audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) (tPitchShifterToFunc_tick(ps[0], input, nearestPeriod) * TWO_TO_31);
+				}
 			}
 		}
 		else if (atType == AbsoluteType)
@@ -251,21 +270,35 @@ void audioFrame(uint16_t buffer_offset)
 			{
 				tMPoly_tick(mpoly);
 
-				input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31);
+				input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31 * 2);
 				output = 0.0f;
+				output2 = 0.0f;
 
 				for (int i = 0; i < activeShifters; ++i)
 				{
+					sample = tFormantShifterRemove(fs[i], input);
+
 					freq[i] = OOPS_midiToFrequency(tMPoly_getPitch(mpoly, i));
-					output += tPitchShifterToFreq_tick(ps[i], input, freq[i]) * tRampTick(ramp[i]);
+					sample = tPitchShifterToFreq_tick(ps[i], sample, freq[i]) * tRampTick(ramp[i]);
+
+					output += tFormantShifterAdd(fs[i], sample, 0.0f);
+
+					output2 += tPitchShifterToFreq_tick(ps[i+1], input, freq[i]) * tRampSample(ramp[i]);
 				}
 
-				audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) (output * TWO_TO_31);
+				mix = ((adcVals[1] * INV_TWO_TO_16) * output) + ((1 - (adcVals[1] * INV_TWO_TO_16)) * output2);
+
+				audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) (mix * TWO_TO_31);
 			}
 		}
 	}
 	if (mode == VocoderMode)
 	{
+		for (int i = 0; i < activeVoices; i++)
+		{
+			freq[i] = OOPS_midiToFrequency(tMPoly_getPitch(mpoly, i));
+			tSawtoothSetFreq(osc[i], freq[i]);
+		}
 		for (int cc=0; cc < numSamples; cc++)
 		{
 			tMPoly_tick(mpoly);
@@ -273,10 +306,8 @@ void audioFrame(uint16_t buffer_offset)
 			input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31);
 			output = 0.0f;
 
-			for (int i = 0; i < NUM_VOICES; i++)
+			for (int i = 0; i < activeVoices; i++)
 			{
-				freq[i] = OOPS_midiToFrequency(tMPoly_getPitch(mpoly, i));
-				tSawtoothSetFreq(osc[i], freq[i]);
 				output += tSawtoothTick(osc[i]) * tRampTick(ramp[i]);
 			}
 			output *= 0.25f;
@@ -326,6 +357,10 @@ static void writeModeToLCD(VocodecMode in)
 			OLEDwriteIntLine(activeShifters, 2, SecondLine);
 		}
 		else OLEDwriteLine("          ", 10, SecondLine);
+	}
+	else if (in == VocoderMode)
+	{
+		OLEDwriteIntLine(activeVoices, 2, SecondLine);
 	}
 	else OLEDwriteLine("          ", 10, SecondLine);
 }
@@ -384,12 +419,18 @@ void buttonWasPressed(VocodecButton button)
 				mpoly->numVoices = activeShifters;
 			}
 		}
+		else if (mode == VocoderMode)
+		{
+			if (activeVoices < NUM_VOICES) activeVoices++;
+			else activeVoices = 1;
+			mpoly->numVoices = activeVoices;
+		}
 	}
 
 	mode = (VocodecMode) modex;
 
 	if (mode == AutotuneMode) tMPoly_setNumVoices(mpoly, activeShifters);
-	if (mode == VocoderMode) tMPoly_setNumVoices(mpoly, NUM_VOICES);
+	if (mode == VocoderMode) tMPoly_setNumVoices(mpoly, activeVoices);
 
 	writeModeToLCD(mode);
 }

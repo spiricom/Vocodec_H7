@@ -112,6 +112,8 @@ float       tHighpassGetFreq   (tHighpass*  const);
 
 tFormantShifter*    tFormantShifterInit     (void);
 float       tFormantShifterTick    (tFormantShifter* const, float input, float fwarp);
+float       tFormantShifterRemove    (tFormantShifter* const, float input);
+float       tFormantShifterAdd       (tFormantShifter* const, float input, float fwarp);
 void        tFormantShifter_ioSamples   (tFormantShifter* const, float* in, float* out, int size, float fwarp);
 
 tPitchShifter*    tPitchShifter_init        (float* in, float* out, int bufSize, int frameSize);
