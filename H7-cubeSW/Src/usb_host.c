@@ -110,7 +110,7 @@ void MX_USB_HOST_Init(void)
 
 	USBH_RegisterClass(&hUsbHostFS, USBH_MIDI_CLASS);
 
-USBH_Start(&hUsbHostFS);
+	USBH_Start(&hUsbHostFS);
 
   /* USER CODE BEGIN USB_HOST_Init_PostTreatment */
   HAL_PWREx_EnableUSBVoltageDetector();
@@ -141,6 +141,17 @@ static void USBH_UserProcess  (USBH_HandleTypeDef *phost, uint8_t id)
 		Appli_state = APPLICATION_DISCONNECT;
 		__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 100); //led4 top red
 		__HAL_TIM_SET_COMPARE(&htim8, TIM_CHANNEL_1, 0); //top green
+
+		//reset the USB stuff - to handle cases where disconnection put USB into an unrecoverable state for some reason
+		USBH_Stop(&hUsbHostFS);
+		for (uint i = 0; i < RX_BUFF_SIZE; i++)
+		{
+			MIDI_RX_Buffer[i] = 0;
+		}
+		//HAL_Delay(1);
+		USBH_Init(&hUsbHostFS, USBH_UserProcess, HOST_FS);
+		USBH_RegisterClass(&hUsbHostFS, USBH_MIDI_CLASS);
+		USBH_Start(&hUsbHostFS);
 		break;
 
 	case HOST_USER_CLASS_ACTIVE:

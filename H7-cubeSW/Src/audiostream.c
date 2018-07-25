@@ -217,9 +217,9 @@ void audioFrame(uint16_t buffer_offset)
 	{
 		for (int cc=0; cc < numSamples; cc++)
 		{
-			input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31 * 2);
-			formantShiftFactor = adcVals[1] * INV_TWO_TO_16;
-			audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) (tFormantShifterTick(fs, input, formantShiftFactor) * TWO_TO_31);
+			input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31);
+
+			audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) (tFormantShifterTick(fs, input, -1.0) * TWO_TO_31);
 		}
 	}
 	else if (mode == PitchShiftMode)
@@ -282,7 +282,8 @@ void audioFrame(uint16_t buffer_offset)
 			output *= 0.25f;
 
 			output = tTalkboxTick(vocoder, output, input);
-			output = OOPS_softClip(output, 0.98f);
+
+			//output = OOPS_softClip(output, 0.98f);
 			audioOutBuffer[buffer_offset + (cc*2)]  = (int32_t) (output * TWO_TO_31);
 		}
 	}
