@@ -175,7 +175,7 @@ int main(void)
   MX_SAI1_Init();
   MX_SPI4_Init();
   MX_I2C4_Init();
-  MX_USB_HOST_Init();
+  //MX_USB_HOST_Init();
   MX_TIM3_Init();
   MX_TIM8_Init();
   /* USER CODE BEGIN 2 */
