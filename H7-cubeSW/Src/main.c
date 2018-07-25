@@ -63,18 +63,6 @@
 
 /* USER CODE BEGIN Includes */
 #include "audiostream.h"
-#include "ssd1306.h"
-#include "oled.h"
-#include "custom_fonts.h"
-#include "gfx.h"
-#include "ui.h"
-
-
-// FOR BEST SPEED
-// set -O2 optimization flag for GCC and add these flags -finline-functions -funswitch-loops -fpredictive-commoning -fgcse-after-reload -ftree-loop-vectorize -ftree-loop-distribution -floop-interchange -floop-unroll-and-jam -fsplit-paths -fvect-cost-model -ftree-partial-pre -fpeel-loops -ffast-math -fsingle-precision-constant
-
-// the -ftree-slp-vectorize breaks something - MIDI, likely
-// -O3 with -fno-tree-slp-vectorize should work but for some reason it isn't as good. Maybe the specific gcc version for ARM omits some of those optimization flags from -O3?
 
 /* USER CODE END Includes */
 
@@ -83,35 +71,11 @@
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 
-//register unsigned int apsr __asm("cpacr");
-
-//FPU->CPACR |= (1<<24);
-
-//#define SAMPLERATE96K
-
 #define NUM_ADC_CHANNELS 5
 uint16_t myADC[NUM_ADC_CHANNELS] __ATTR_RAM_D2;
 
 uint32_t counter = 0;
-int pinValue = 0;
 
-
-
-uint8_t ball[]  = {0x00, 0x3C, 0x7E, 0x7E, 0x7E, 0x7E, 0x3C, 0x00};
-static unsigned char testblock[] = {0x00, 0x7C, 0x7E, 0x0B, 0x0B, 0x7E, 0x7C, 0x00};
-
-char* formantEmojis[9] =
-{
-	":O        ",
-	" :0       ",
-	"  :o      ",
-	"   :o     ",
-	"    :*    ",
-	"     :|   ",
-	"      :|  ",
-	"       :) ",
-	"        :D"
-};
 
 /* USER CODE END PV */
 
@@ -166,100 +130,19 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_BDMA_Init();
+  //MX_BDMA_Init();
   MX_DMA_Init();
   MX_ADC1_Init();
   MX_I2C2_Init();
-  MX_QUADSPI_Init();
+  //MX_QUADSPI_Init();
   MX_RNG_Init();
   MX_SAI1_Init();
-  MX_SPI4_Init();
-  MX_I2C4_Init();
-  //MX_USB_HOST_Init();
-  MX_TIM3_Init();
-  MX_TIM8_Init();
+  //MX_SPI4_Init();
+ // MX_I2C4_Init();
+
   /* USER CODE BEGIN 2 */
 
-  /// when rebuilding from CubeMX, make sure to comment out original call to MX_USB_HOST_Init() so that this delayed version can happen later. That way the LEDs are initialized and the powersupply is stable.
 
-  //LED initialization
-	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
-	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
-	HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_1);
-
-  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_SET); //led amber  This one is still controlled via GPIO (unfortunately the pin it's connected to is not dimmable via PWM). SET is on, RESET if off.
-
-  //These LEDs are now dimmable (not the amber, though). Call these functions with 0 for off and some number between 1-65535 for different brightnesses. Anything above 500 is actually basically way too bright. 100 is good.
-  // include tim.h anywhere you need to call these functions so that the file knows about the htim handlers.
-
-  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 0); //bottom green
-  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 0); //led4 top red
-  __HAL_TIM_SET_COMPARE(&htim8, TIM_CHANNEL_1, 0); //top green
-
-
-  HAL_Delay(50);
-
-  //now try starting up the USB
-
-  MX_USB_HOST_Init();
-
-
-
-  //start up that OLED display
-  ssd1306_begin(&hi2c4, SSD1306_SWITCHCAPVCC, SSD1306_I2C_ADDRESS);
-
-  HAL_Delay(5);
-
-  //clear the OLED display buffer
-  for (int i = 0; i < 512; i++)
-  {
-	  buffer[i] = 0;
-  }
-
-  //display the blank buffer on the OLED
-  ssd1306_display_full_buffer();
-
-  //initialize the graphics library that lets us write things in that display buffer
-  GFXinit(&theGFX, 128, 32);
-
-  //set up the monospaced font
-  GFXsetFont(&theGFX, &Monospaced_plain_18);
-
-
-  GFXsetTextColor(&theGFX, 1, 0);
-  GFXsetTextSize(&theGFX, 1);
-  /*
-  GFXfillRect(&theGFX, 0, 0, 128, 16, 0);
-  GFXsetCursor(&theGFX, 0,15);
-  GFXwrite(&theGFX,'P');
-  GFXwrite(&theGFX,'I');
-  GFXwrite(&theGFX,'T');
-  GFXwrite(&theGFX,'C');
-  GFXwrite(&theGFX,'H');
-  GFXwrite(&theGFX,'S');
-  GFXwrite(&theGFX,'H');
-  GFXwrite(&theGFX,'I');
-  GFXwrite(&theGFX,'F');
-  GFXwrite(&theGFX,'T');
-  */
-  OLEDwriteLine("FORMANT   ", 10, FirstLine);
-  /*
-  OLEDwriteString("OH NOES", 7, 0, FirstLine);
-  GFXsetFont(&theGFX, &URW_Gothic_L_Book_16);
-  OLEDwriteString("IT ME", 5, 0, SecondLine);
-  */
-  //OLEDwriteFixedFloatLine(8.463f, 4, 3, FirstLine);
-  //GFXsetCursor(&theGFX, 100,16);
-  //GFXwriteFastHLine(&theGFX, 0, 24,
-          //128, 1);
-
-  //GFXwrite(&theGFX,'A');
-  //GFXdrawChar(&theGFX,0,0,'H', 1, 0, 2);
-
-  ssd1306_display_full_buffer();
-
-  //HAL_Delay(500);
-  //sdd1306_invertDisplay(1);
 
 
   // this code sets the processor to treat denormal numbers (very tiny floats) as zero to improve performance.
@@ -281,50 +164,8 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  MX_USB_HOST_Process();
-
-
-	  if (counter >= 200)
-	  {
-		  if (mode == FormantShiftMode)
-		  {
-			  GFXfillRect(&theGFX, 0, 16, 128, 16, 0);
-			  int emojiIndex = (int)(formantShiftFactor * 9);
-			  int pixel = (int)(formantShiftFactor * 9 * 12);
-			  if (pixel > 104) pixel = 104;
-			  OLEDwriteString(formantEmojis[emojiIndex], 10, pixel%12 , SecondLine);
-		  }
-		  else if (mode == PitchShiftMode)
-		  {
-			  OLEDwriteFixedFloatLine(pitchFactor, 9, 2, SecondLine);
-		  }
-		  buttonCheck(); // should happen here, not frame, or else interrupts audio processing
-		  counter = 0;
-	  }
-	  counter++;
-#if 0
-	  GFXfillRect(&theGFX, 0, 16, 128, 16, 0);
-	  int repeat = (128 / AUDIO_FRAME_SIZE);
-	  float ratio = AUDIO_FRAME_SIZE*INV_TWO_TO_7;
-	  if (repeat == 0) repeat = 1;
-	  if (ratio < 1.0f) ratio = 1.0f;
-	  int idx;
-	  for (int i = 0; i < 128; i++)
-	  {
-		 idx = (int)(buffer_offset + ((int)(((i / repeat) * 2) * ratio)));
-		 GFXwritePixel(&theGFX, i, (uint16_t) (((float)audioOutBuffer[idx] * INV_TWO_TO_15 * 8.0f) + 24.0f), 1);
-	  }
-
-
-#endif
-	  //ssd1306_display_full_buffer();
-	  //buffer[counter] = (uint8_t)(randomNumber() * 255.0f);
-
-	  //oled_putxy(counter,0,&ball);
-	  //
 
   /* USER CODE END WHILE */
-    MX_USB_HOST_Process();
 
   /* USER CODE BEGIN 3 */
 

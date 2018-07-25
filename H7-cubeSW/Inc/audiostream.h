@@ -30,41 +30,14 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32h7xx_hal.h"
-#include "gfx.h"
-#include "ui.h"
 
 #include "OOPS.h"
-
-#define NUM_OSC 			4
-#define INV_NUM_OSC 		1.0f/NUM_OSC
 
 #define AUDIO_FRAME_SIZE     64
 #define HALF_BUFFER_SIZE      AUDIO_FRAME_SIZE * 2 //number of samples per half of the "double-buffer" (twice the audio frame size because there are interleaved samples for both left and right channels)
 #define AUDIO_BUFFER_SIZE     AUDIO_FRAME_SIZE * 4 //number of samples in the whole data structure (four times the audio frame size because of stereo and also double-buffering/ping-ponging)
 
 
-#define NUM_BUTTONS 16
-uint8_t buttonValues[NUM_BUTTONS];
-uint8_t buttonValuesPrev[NUM_BUTTONS];
-uint32_t buttonCounters[NUM_BUTTONS];
-uint32_t buttonPressed[NUM_BUTTONS];
-
-extern int chordArray[12];
-extern GFX theGFX;
-extern float testFreq;
-extern uint8_t buttonAPressed;
-extern uint8_t doAudio;
-extern float detuneAmounts[NUM_OSC];
-extern float myVol;
-extern int32_t audioOutBuffer[AUDIO_BUFFER_SIZE];
-extern float noteperiod;
-extern float pitchFactor;
-extern float formantShiftFactor;
-
-// MIDI FUNCTIONS
-void noteOn(int key, int velocity);
-void noteOff(int key, int velocity);
-void ctrlInput(int ctrl, int value);
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum
@@ -75,46 +48,9 @@ typedef enum
 }BUFFER_StateTypeDef;
 
 
-void slideValueChanged(uint16_t value);
-
-void knobValueChanged(uint16_t value);
-
-void buttonOneDown(void);
-
-void buttonOneUp(void);
-
-void buttonTwoDown(void);
-
-void buttonTwoUp(void);
-
-void presetButtonDown(void);
-
-void presetButtonUp(void);
-
-void setFundamental(float fund);
 
 
-/* Exported constants --------------------------------------------------------*/
-
-extern float fundamental_hz;
-extern float fundamental_cm;
-extern float fundamental_m;
-extern float inv_fundamental_m;
-extern float cutoff_offset;
-extern float intPeak;
-extern float floatPeak;
-extern float testDelay;
-extern float slide_tune;
-
-extern float valPerM;
-extern float mPerVal;
-
-#ifdef SAMPLERATE96K
-#define SAMPLE_RATE 96000.f
-#else
-#define SAMPLE_RATE 48000.f
-#endif
-
+#define SAMPLE_RATE 48000.0f
 #define INV_SAMPLE_RATE 1.f/SAMPLE_RATE 
 #define SAMPLE_RATE_MS (SAMPLE_RATE / 1000.f)
 #define INV_SR_MS 1.f/SAMPLE_RATE_MS
@@ -122,50 +58,6 @@ extern float mPerVal;
 #define SAMPLE_RATE_DIV_PARAMS_MS (SAMPLE_RATE_DIV_PARAMS / 1000.f)
 #define INV_SR_DIV_PARAMS_MS 1.f/SAMPLE_RATE_DIV_PARAMS_MS
 
-typedef enum LCDModeType
-{
-	LCDModeDisplayPitchClass = 0,
-	LCDModeDisplayPitchMidi,
-	LCDModeTypeNil,
-	LCDModeCount = LCDModeTypeNil
-} LCDModeType;
-
-typedef enum VocodecButton
-{
-	ButtonA = 0,
-	ButtonB,
-	ButtonUp,
-	ButtonDown,
-	ButtonNil
-} VocodecButton;
-
-typedef enum VocodecMode
-{
-	FormantShiftMode = 0,
-	PitchShiftMode,
-	AutotuneMode,
-	VocoderMode,
-	ModeNil
-} VocodecMode;
-
-typedef enum AutotuneType
-{
-	NearestType = 0,
-	AbsoluteType,
-	AutotuneTypeNil
-} AutotuneType;
-
-extern VocodecMode mode;
-extern AutotuneType atType;
-extern int activeShifters;
-
-void buttonWasPressed(VocodecButton button);
-void buttonWasReleased(VocodecButton button);
-
-extern uint16_t knobValue;
-extern int knobMoved;
-extern int calibrated;
-extern LCDModeType lcdMode;
 
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */

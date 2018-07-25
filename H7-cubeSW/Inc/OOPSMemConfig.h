@@ -64,16 +64,16 @@ extern const float shaper1[SHAPER1_TABLE_SIZE];
 #define     N_ADSR               0
 #define     N_ENVELOPEFOLLOW     0
 #define     N_VOCODER            0
-#define     N_TALKBOX            1
+#define     N_TALKBOX            0
 #define     N_POLY               0
-#define     N_MPOLY              1
+#define     N_MPOLY              0
 #define     N_STACK              0 + (2 * N_MPOLY)
 #define     N_SOLAD              0 + (1 * N_PITCHSHIFTER)
 #define     N_SNAC               0 + (1 * N_PITCHSHIFTER)
 #define     N_ATKDTK             0
 #define     N_RAMP               NUM_VOICES + (N_MPOLY * MPOLY_NUM_MAX_VOICES)
 #define     N_LOCKHARTWAVEFOLDER 0
-#define     N_FORMANTSHIFTER     2
+#define     N_FORMANTSHIFTER     0
 
 #define     DELAY_LENGTH        16000   // The maximum delay length of all Delay/DelayL/DelayA components.
                                             // Feel free to change to suit memory constraints or desired delay max length / functionality.

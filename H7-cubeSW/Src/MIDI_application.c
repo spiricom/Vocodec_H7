@@ -83,14 +83,14 @@ void ProcessReceivedMidiDatas(uint32_t myLength)
 					key = pack.evnt1;
 					velocity = pack.evnt2;
 
-					noteOff(key, velocity);
+					//noteOff(key, velocity);
 				
 					break;
 				case (0x90): // Note On
 					key = pack.evnt1;
 					velocity = pack.evnt2;
 
-					noteOn(key, velocity);
+					//noteOn(key, velocity);
 
 					break;
 				case (0xA0):
