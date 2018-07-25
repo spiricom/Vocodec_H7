@@ -38,7 +38,7 @@
 
 #define NUM_VOICES 8
 
-#define AUDIO_FRAME_SIZE     256
+#define AUDIO_FRAME_SIZE     128
 #define HALF_BUFFER_SIZE      AUDIO_FRAME_SIZE * 2 //number of samples per half of the "double-buffer" (twice the audio frame size because there are interleaved samples for both left and right channels)
 #define AUDIO_BUFFER_SIZE     AUDIO_FRAME_SIZE * 4 //number of samples in the whole data structure (four times the audio frame size because of stereo and also double-buffering/ping-ponging)
 
@@ -55,6 +55,7 @@ extern uint8_t doAudio;
 extern float detuneAmounts[NUM_OSC];
 extern float myVol;
 tSawtooth* osc[NUM_OSC];
+tCycle* sine;
 tPolyphonicHandler* poly;
 tTalkbox* vocoder;
 

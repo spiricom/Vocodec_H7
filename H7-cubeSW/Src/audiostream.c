@@ -10,8 +10,8 @@
 // (otherwise the TX times out because the DMA can't see the data location) -JS
 
 
-ALIGN_32BYTES (int16_t audioOutBuffer[AUDIO_BUFFER_SIZE] __ATTR_RAM_D2);
-ALIGN_32BYTES (int16_t audioInBuffer[AUDIO_BUFFER_SIZE] __ATTR_RAM_D2);
+ALIGN_32BYTES (int32_t audioOutBuffer[AUDIO_BUFFER_SIZE] __ATTR_RAM_D2);
+ALIGN_32BYTES (int32_t audioInBuffer[AUDIO_BUFFER_SIZE] __ATTR_RAM_D2);
 
 float detuneAmounts[NUM_OSC];
 
@@ -68,6 +68,7 @@ void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTy
 		detuneAmounts[i] = (randomNumber() * detuneMax) - (detuneMax * 0.5f);
 	}
 	vocoder = tTalkboxInit();
+	sine = tCycleInit();
 
 	// set up the I2S driver to send audio data to the codec (and retrieve input as well)	
 	transmit_status = HAL_SAI_Transmit_DMA(hsaiOut, (uint8_t *)&audioOutBuffer[0], AUDIO_BUFFER_SIZE);
@@ -78,12 +79,13 @@ void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTy
 
 float tempVal = 0.0f;
 uint16_t frameCounter = 0;
-
+int32_t sampleCounter = 0;
 void audioFrame(uint16_t buffer_offset)
 {
 	uint16_t i = 0;
-	int16_t current_sample = 0;
+	int32_t current_sample = 0;
 	tSawtoothSetFreq(osc[i], 100.0f);
+	tCycleSetFreq(sine, 100.0f);
 /*
 	frameCounter++;
 	if (frameCounter >= 1)
@@ -102,13 +104,24 @@ void audioFrame(uint16_t buffer_offset)
 
 	for (i = 0; i < (HALF_BUFFER_SIZE); i++)
 	{
+
 		if ((i & 1) == 0) {
-			current_sample = (int16_t)(audioTickL((float) (audioInBuffer[buffer_offset + i] * INV_TWO_TO_15)) * TWO_TO_15);
+			current_sample = (int32_t)(audioTickL((float) (audioInBuffer[buffer_offset + i] * INV_TWO_TO_31)) * TWO_TO_31);
+			/*
+			sampleCounter += 44000;
+			if (sampleCounter > 2147483647)
+			{
+				sampleCounter = -2147483647;
+			}
+			current_sample = sampleCounter;
+			*/
 		}
 		else
 		{
 			//current_sample = (int16_t)(audioTickR((float) (audioInBuffer[buffer_offset + i] * INV_TWO_TO_15)) * TWO_TO_15);
+			current_sample = 0;
 		}
+
 		audioOutBuffer[buffer_offset + i] = current_sample;
 	}
 }
@@ -117,9 +130,11 @@ float currentFreq = 1.0f;
 
 float rightInput = 0.0f;
 
+
+
 float audioTickL(float audioIn) 
 {
-	sample = 0.0f;
+	//sample = 0.0f;
 	/*
 	for (int i = 0; i < 4; i++)
 	{
@@ -136,9 +151,26 @@ float audioTickL(float audioIn)
 		}
 	}
 
-	//sample = tSawtoothTick(osc[0]);
+	sampleCounter++;
+
+	if (sampleCounter > 1000)
+	{
+		if (sample >= 0)
+		{
+			sample = -1.0f;
+		}
+		else
+		{
+			sample = 1.0f;
+		}
+		sampleCounter = 0;
+	}
+
+
+	sample = tSawtoothTick(osc[0]);
+	sample = tCycleTick(sine);
 	sample = audioIn;
-	//sample *= .25f;
+	//sample *= 1.0f;
 
 	//sample = tTalkboxTick(vocoder, sample, audioIn);
 	//sample = OOPS_softClip(sample, 0.98f);

@@ -68,6 +68,10 @@ typedef enum oBool
 #define TWO_TO_16 				65536.f
 #define INV_TWO_TO_16 		0.00001525878f
 #define TWO_TO_16_MINUS_ONE 65535.0f
+#define TWO_TO_23		8388608.0f
+#define INV_TWO_TO_23	0.00000011920929f
+#define TWO_TO_31		2147483648.0f
+#define INV_TWO_TO_31	0.000000000465661f
 
 // Jones shaper
 float OOPS_shaper     (float input, float m_drive);
