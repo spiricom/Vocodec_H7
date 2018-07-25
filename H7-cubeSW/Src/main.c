@@ -187,7 +187,7 @@ int main(void)
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
 	HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_1);
 
-  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_RESET); //led amber  This one is still controlled via GPIO (unfortunately the pin it's connected to is not dimmable via PWM). SET is on, RESET if off.
+  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_SET); //led amber  This one is still controlled via GPIO (unfortunately the pin it's connected to is not dimmable via PWM). SET is on, RESET if off.
 
   //These LEDs are now dimmable (not the amber, though). Call these functions with 0 for off and some number between 1-65535 for different brightnesses. Anything above 500 is actually basically way too bright. 100 is good.
   // include tim.h anywhere you need to call these functions so that the file knows about the htim handlers.
