@@ -29,7 +29,7 @@ float pitchFactor = 1.0f;
 
 
 tPitchShifter* ps[NUM_SHIFTERS];
-
+tRamp* ramp[NUM_SHIFTERS];
 
 typedef enum BOOL {
 	FALSE = 0,
@@ -60,6 +60,11 @@ void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTy
 		tPitchShifter_setWindowSize(ps[i], 1024);
 		tPitchShifter_setHopSize(ps[i], 256);
 		tPitchShifter_setPitchFactor(ps[i], 1.0f);
+		//the ramp to smooth the pitch shifting factor (the value by which to pitch shift) to avoid glitches due to noisy parameter data
+		//first argument is time to ramp in milliseconds (currently 7ms for very fast ramp)
+		//second argument is number of samples per tick (how often you check the ramp - in this case we update and check every sample, so the value is 1)
+		ramp[i] = tRampInit(7.0f, 1);
+
 	}
 }
 
@@ -89,7 +94,9 @@ float audioTickL(float audioIn)
 
 	pitchFactor = ((adcVals[1]>> 4) * INV_TWO_TO_12) * 3.5f + 0.5f;
 
-	tPitchShifter_setPitchFactor(ps[0], pitchFactor);
+	tRampSetDest(ramp[0], pitchFactor);
+
+	tPitchShifter_setPitchFactor(ps[0], tRampTick(ramp[0]));
 
 	//or you could just set the pitch factor directly like this (since you'll be taking it from some SPI data eventually)
 	//tPitchShifter_setPitchFactor(ps[0], 2.0f);
@@ -105,7 +112,9 @@ float audioTickR(float audioIn)
 
 	pitchFactor = ((adcVals[0] >> 4) * INV_TWO_TO_12) * 3.5f + 0.5f;
 
-	tPitchShifter_setPitchFactor(ps[1], pitchFactor);
+	tRampSetDest(ramp[1], pitchFactor);
+
+	tPitchShifter_setPitchFactor(ps[1], tRampTick(ramp[1]));
 
 	//or you could just set the pitch factor directly like this (since you'll be taking it from some SPI data eventually)
 	//tPitchShifter_setPitchFactor(ps[0], 0.5f);
