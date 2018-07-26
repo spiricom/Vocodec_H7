@@ -13,11 +13,6 @@ void OLEDwriteString(uint8_t* myCharArray, uint8_t arrayLength, uint8_t startCur
 	GFXsetCursor(&theGFX, cursorX, cursorY);
 	for (int i = 0; i < arrayLength; ++i)
 	{
-		GFXwrite(&theGFX, ' ');
-	}
-	GFXsetCursor(&theGFX, cursorX, cursorY);
-	for (int i = 0; i < arrayLength; ++i)
-	{
 		GFXwrite(&theGFX, myCharArray[i]);
 	}
 	ssd1306_display_full_buffer();

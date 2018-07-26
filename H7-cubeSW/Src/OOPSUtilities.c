@@ -109,7 +109,7 @@ tEnv* tEnvInit(int ws, int hs, int bs)
     
     for (i = 0; i < MAXOVERLAP; i++) x->x_sumbuf[i] = 0;
     for (i = 0; i < npoints; i++)
-        x->buf[i] = (1.0f - cos((2 * 3.14159f * i) / npoints))/npoints;
+        x->buf[i] = (1.0f - cos((2 * PI * i) / npoints))/npoints;
     for (; i < npoints+INITVSTAKEN; i++) x->buf[i] = 0;
     
     x->x_f = 0;
@@ -1762,23 +1762,20 @@ static float snac_spectralpeak(tSNAC *s, float periodlength);
 /******************************************************************************/
 
 
-tSNAC* tSNAC_init(int framearg, int overlaparg)
+tSNAC* tSNAC_init(int overlaparg)
 {
     
     tSNAC *s = &oops.tSNACRegistry[oops.registryIndex[T_SNAC]++];
 
-    s->inputbuf = NULL;
-    s->processbuf = NULL;
-    s->spectrumbuf = NULL;
-    s->biasbuf = NULL;
     s->biasfactor = DEFBIAS;
     s->timeindex = 0;
     s->periodindex = 0;
     s->periodlength = 0.;
     s->fidelity = 0.;
     s->minrms = DEFMINRMS;
+    s->framesize = SNAC_FRAME_SIZE;
     
-    tSNAC_setFramesize(s, framearg);
+    snac_biasbuf(s);
     tSNAC_setOverlap(s, overlaparg);
     
     return s;
@@ -1808,34 +1805,6 @@ void tSNAC_ioSamples(tSNAC *s, float *in, float *out, int size)
     s->timeindex = timeindex;
     return;
 }
-
-
-// set framesize and (re)allocate buffers accordingly
-void tSNAC_setFramesize(tSNAC *s, int frame)
-{
-    int n;
-    
-    if(!((frame==128)|(frame==256)|(frame==512)|(frame==1024)|(frame==2048)))
-        frame = DEFFRAMESIZE;
-    s->framesize = n = frame;
-    
-    s->inputbuf = (float*)realloc(s->inputbuf, s->framesize * sizeof(float));
-    float *inputbuf = s->inputbuf;
-    while(n--) *inputbuf++ = 0;
-    
-    s->processbuf = (float*)realloc(s->processbuf,
-                                      s->framesize * 2 * sizeof(float));
-    
-    s->spectrumbuf = (float*)realloc(s->spectrumbuf,
-                                       s->framesize * 0.5 * sizeof(float));
-    
-    s->biasbuf = (float*)realloc(s->biasbuf, s->framesize * sizeof(float));
-    snac_biasbuf(s);
-    
-    s->timeindex = 0;
-    return;
-}
-
 
 void tSNAC_setOverlap(tSNAC *s, int lap)
 {

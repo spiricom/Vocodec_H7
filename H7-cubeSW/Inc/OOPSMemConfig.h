@@ -19,9 +19,12 @@
  *                                                                                                       *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#define NUM_VOICES 6
-#define NUM_SHIFTERS 2
-#define MPOLY_NUM_MAX_VOICES 6
+#define NUM_VOICES 8
+#define NUM_SHIFTERS 6
+#define MPOLY_NUM_MAX_VOICES 8
+#define PS_FRAME_SIZE 1024 // SNAC_FRAME_SIZE in OOPSCore.h should match (or be smaller than?) this
+#define ENV_WINDOW_SIZE 64 // 1024
+#define ENV_HOP_SIZE 64 //256
 
 #define SHAPER1_TABLE_SIZE 65536
 extern const float shaper1[SHAPER1_TABLE_SIZE];
@@ -73,7 +76,7 @@ extern const float shaper1[SHAPER1_TABLE_SIZE];
 #define     N_ATKDTK             0
 #define     N_RAMP               MPOLY_NUM_MAX_VOICES + (N_MPOLY * MPOLY_NUM_MAX_VOICES)
 #define     N_LOCKHARTWAVEFOLDER 0
-#define     N_FORMANTSHIFTER     NUM_SHIFTERS
+#define     N_FORMANTSHIFTER     1
 
 #define     DELAY_LENGTH        16000   // The maximum delay length of all Delay/DelayL/DelayA components.
                                             // Feel free to change to suit memory constraints or desired delay max length / functionality.
