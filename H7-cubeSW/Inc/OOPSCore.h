@@ -480,6 +480,7 @@ typedef struct _tVocoder
 } tVocoder;
 
 #define NUM_TALKBOX_PARAM 4
+#define TALKBOX_BUFFER_LENGTH 1024 //1600
 
 typedef struct _tTalkbox
 {
@@ -739,7 +740,7 @@ typedef struct _tEnv
     uint16_t x_allocforvs;               /* extra buffer for DSP vector size */
 } tEnv;
 
-#define FORD 10
+#define FORD 7
 #define FORMANT_BUFFER_SIZE 2048
 
 typedef struct _tFormantShifter

@@ -20,7 +20,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #define NUM_VOICES 8
-#define NUM_SHIFTERS 6
+#define NUM_SHIFTERS 4
 #define MPOLY_NUM_MAX_VOICES 8
 #define PS_FRAME_SIZE 1024 // SNAC_FRAME_SIZE in OOPSCore.h should match (or be smaller than?) this
 #define ENV_WINDOW_SIZE 64 // 1024
@@ -80,9 +80,6 @@ extern const float shaper1[SHAPER1_TABLE_SIZE];
 
 #define     DELAY_LENGTH        16000   // The maximum delay length of all Delay/DelayL/DelayA components.
                                             // Feel free to change to suit memory constraints or desired delay max length / functionality.
-
-#define TALKBOX_BUFFER_LENGTH   1600    // Every talkbox instance introduces 5 buffers of this size
-
 
 #define     INC_MISC_WT         0     // Set this to 1 if you are interested in the mtof1, adc1, tanh1, and shaper1 wavetables
                                         // and have spare memory.

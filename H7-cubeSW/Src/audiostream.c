@@ -294,28 +294,18 @@ void audioFrame(uint16_t buffer_offset)
 				tMPoly_tick(mpoly);
 
 				input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31 * 2);
-				sample = 0.0f;
+				sample = input;
 				output = 0.0f;
 
 				if (formantCorrect > 0) sample = tFormantShifterRemove(fs, input);
 
 				for (int i = 0; i < activeShifters; ++i)
 				{
-					/*
-					if (formantCorrect > 0)
-					{
-						freq[i] = OOPS_midiToFrequency(tMPoly_getPitch(mpoly, i));
-						sample = tPitchShifterToFreq_tick(ps[i], sample, freq[i]) * tRampTick(ramp[i]);
-
-						output += tFormantShifterAdd(fs, sample, 0.0f);
-					}
-					else
-					*/ //This crashes around 3 or 4 iterations. Too costly?
-					{
-						freq[i] = OOPS_midiToFrequency(tMPoly_getPitch(mpoly, i));
-						output += tPitchShifterToFreq_tick(ps[i], input, freq[i]) * tRampTick(ramp[i]);
-					}
+					freq[i] = OOPS_midiToFrequency(tMPoly_getPitch(mpoly, i));
+					output += tPitchShifterToFreq_tick(ps[i], sample, freq[i]) * tRampTick(ramp[i]);
 				}
+
+				if (formantCorrect > 0) output = tFormantShifterAdd(fs, output, 0.0f);
 
 				audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) (output * TWO_TO_31);
 			}
@@ -331,6 +321,10 @@ void audioFrame(uint16_t buffer_offset)
 		for (int cc=0; cc < numSamples; cc++)
 		{
 			tMPoly_tick(mpoly);
+
+			float quality = adcVals[1] * INV_TWO_TO_16;
+
+			tTalkboxSetQuality(vocoder, quality);
 
 			input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31);
 			output = 0.0f;

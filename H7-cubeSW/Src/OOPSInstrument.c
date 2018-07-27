@@ -70,7 +70,6 @@ void tTalkboxUpdate(tTalkbox* const v) ///update internal parameters...
     v->dry = 2.0f * v->param[1] * v->param[1];
 }
 
-
 void tTalkboxSuspend(tTalkbox* const v) ///clear any buffers...
 {
     v->pos = v->K = 0;
@@ -208,6 +207,12 @@ float tTalkboxTick(tTalkbox* const v, float synth, float voice)
     if(fabs(v->u2) < den) v->u2 = 0.0f;
     if(fabs(v->u3) < den) v->u3 = 0.0f;
     return o;
+}
+
+void tTalkboxSetQuality(tTalkbox* const v, float quality)
+{
+	v->param[3] = quality;
+	v->O = (int32_t)((0.0001f + 0.0004f * v->param[3]) * oops.sampleRate);
 }
 
 #endif
