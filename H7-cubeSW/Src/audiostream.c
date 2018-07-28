@@ -53,7 +53,7 @@ float formantShiftFactor;
 float formantKnob;
 uint8_t formantCorrect = 0;
 
-int activeVoices = 1;
+int activeVoices = 4;
 /* PSHIFT vars *************/
 
 int activeShifters = 1;
@@ -64,7 +64,8 @@ float notePeriods[128];
 int chordArray[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 int lockArray[12];
 int lock;
-
+float centsDeviation[12] = {0.0f, 0.12f, 0.04f, 0.16f, -0.14f, -0.02f, -0.10f, 0.02f, 0.14f, -0.16f, -0.04f, -0.12f};
+int keyCenter = 5;
 /**********************************************/
 
 typedef enum BOOL {
@@ -90,7 +91,10 @@ void noteOn(int key, int velocity)
 			if (tMPoly_isOn(mpoly, i) == 1)
 			{
 				tRampSetDest(ramp[i], (float)(tMPoly_getVelocity(mpoly, i) * INV_TWO_TO_7));
-				freq[i] = OOPS_midiToFrequency(tMPoly_getPitch(mpoly, i));
+				float tempNote = tMPoly_getPitch(mpoly, i);
+				float tempPitchClass = ((((int)tempNote) - keyCenter) % 12 );
+				float tunedNote = tempNote + centsDeviation[(int)tempPitchClass];
+				freq[i] = OOPS_midiToFrequency(tunedNote);
 				tSawtoothSetFreq(osc[i], freq[i]);
 			}
 		}
@@ -101,15 +105,21 @@ void noteOn(int key, int velocity)
 	{
 		chordArray[key%12]++;
 		tMPoly_noteOn(mpoly, key, velocity);
+		/*
 		for (int i = 0; i < mpoly->numVoices; i++)
 		{
+
 			if (tMPoly_isOn(mpoly, i) == 1)
 			{
 				tRampSetDest(ramp[i], (float)(tMPoly_getVelocity(mpoly, i) * INV_TWO_TO_7));
-				freq[i] = OOPS_midiToFrequency(tMPoly_getPitch(mpoly, i));
+				float tempNote = tMPoly_getPitch(mpoly, i);
+				float tempPitchClass = ((((int)tempNote) - keyCenter) % 12 );
+				float tunedNote = tempNote + centsDeviation[(int)tempPitchClass];
+				freq[i] = OOPS_midiToFrequency(tunedNote);
 				tSawtoothSetFreq(osc[i], freq[i]);
 			}
 		}
+		*/
 
 		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_SET);    //LED3
 	}
@@ -124,16 +134,19 @@ void noteOff(int key, int velocity)
 
 	voice = tMPoly_noteOff(mpoly, key);
 	if (voice >= 0) tRampSetDest(ramp[voice], 0.0f);
+	/*
 	for (int i = 0; i < mpoly->numVoices; i++)
 	{
+
 		if (tMPoly_isOn(mpoly, i) == 1)
 		{
 			tRampSetDest(ramp[i], (float)(tMPoly_getVelocity(mpoly, i) * INV_TWO_TO_7));
 			freq[i] = OOPS_midiToFrequency(tMPoly_getPitch(mpoly, i));
 			tSawtoothSetFreq(osc[i], freq[i]);
 		}
-	}
 
+	}
+*/
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_RESET);    //LED3
 }
 
@@ -192,7 +205,10 @@ void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTy
 	tMPoly_setPitchGlideTime(mpoly, 10.0f);
 
 	vocoder = tTalkboxInit();
-
+	for (int i = 0; i < AUDIO_BUFFER_SIZE; i++)
+	{
+		audioOutBuffer[i] = 0;
+	}
 	// set up the I2S driver to send audio data to the codec (and retrieve input as well)
 	transmit_status = HAL_SAI_Transmit_DMA(hsaiOut, (uint8_t *)&audioOutBuffer[0], AUDIO_BUFFER_SIZE);
 	receive_status = HAL_SAI_Receive_DMA(hsaiIn, (uint8_t *)&audioInBuffer[0], AUDIO_BUFFER_SIZE);
@@ -315,16 +331,29 @@ void audioFrame(uint16_t buffer_offset)
 	{
 		for (int i = 0; i < activeVoices; i++)
 		{
-			freq[i] = OOPS_midiToFrequency(tMPoly_getPitch(mpoly, i));
+			if (tMPoly_getVelocity(mpoly, i) > 0)
+			{
+				tRampSetDest(ramp[i], 1.0f);
+			}
+			else
+			{
+				tRampSetDest(ramp[i], 0.0f);
+			}
+
+			float tempNote = tMPoly_getPitch(mpoly, i);
+			float tempPitchClass = ((((int)tempNote) - keyCenter) % 12 );
+			float tunedNote = tempNote + centsDeviation[(int)tempPitchClass];
+			freq[i] = OOPS_midiToFrequency(tunedNote);
 			tSawtoothSetFreq(osc[i], freq[i]);
+
 		}
 		for (int cc=0; cc < numSamples; cc++)
 		{
 			tMPoly_tick(mpoly);
 
-			float quality = adcVals[1] * INV_TWO_TO_16;
+			//float quality = adcVals[1] * INV_TWO_TO_16;
 
-			tTalkboxSetQuality(vocoder, quality);
+			//tTalkboxSetQuality(vocoder, quality);
 
 			input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31);
 			output = 0.0f;
@@ -337,7 +366,7 @@ void audioFrame(uint16_t buffer_offset)
 
 			output = tTalkboxTick(vocoder, output, input);
 
-			//output = OOPS_softClip(output, 0.98f);
+			output = tanhf(output);
 			audioOutBuffer[buffer_offset + (cc*2)]  = (int32_t) (output * TWO_TO_31);
 		}
 	}
