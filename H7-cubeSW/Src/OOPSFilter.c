@@ -1016,15 +1016,19 @@ float tPitchShifter_tick(tPitchShifter* ps, float sample)
         tSNAC_ioSamples(ps->snac, &(ps->inBuffer[i]), &(ps->outBuffer[i]), ps->frameSize);
         period = tSNAC_getPeriod(ps->snac);
 
+        ps->curBlock++;
+		if (ps->curBlock >= ps->framesPerBuffer) ps->curBlock = 0;
+		ps->lastBlock++;
+		if (ps->lastBlock >= ps->framesPerBuffer) ps->lastBlock = 0;
+
+		//separate here
+
         tSOLAD_setPeriod(ps->sola, period);
 
         tSOLAD_setPitchFactor(ps->sola, ps->pitchFactor);
         tSOLAD_ioSamples(ps->sola, &(ps->inBuffer[i]), &(ps->outBuffer[i]), ps->frameSize);
 
-        ps->curBlock++;
-        if (ps->curBlock >= ps->framesPerBuffer) ps->curBlock = 0;
-        ps->lastBlock++;
-        if (ps->lastBlock >= ps->framesPerBuffer) ps->lastBlock = 0;
+
     }
 
     return out;
@@ -1269,6 +1273,242 @@ static int pitchshifter_attackdetect(tPitchShifter* ps)
     
     return (ps->fba == 0 && (ps->max > 60 && ps->deltamax > 6)) ? 1 : 0;
 }
+
+#endif
+
+#if N_PERIOD
+
+tPeriod* 	tPeriod_init	(float* in, float* out, int bufSize, int frameSize)
+{
+	tPeriod* p = &oops.tPeriodRegistry[oops.registryIndex[T_PERIOD]++];
+
+	p->inBuffer = in;
+	p->outBuffer = out;
+	p->bufSize = bufSize;
+	p->frameSize = frameSize;
+	p->framesPerBuffer = p->bufSize / p->frameSize;
+	p->curBlock = 1;
+	p->lastBlock = 0;
+	p->index = 0;
+
+	p->hopSize = DEFHOPSIZE;
+	p->windowSize = DEFWINDOWSIZE;
+	p->fba = FBA;
+
+	p->env = tEnvInit(p->windowSize, p->hopSize, p->frameSize);
+	p->snac = tSNAC_init(DEFOVERLAP);
+
+	p->timeConstant = DEFTIMECONSTANT;
+	p->radius = expf(-1000.0f * p->hopSize * oops.invSampleRate / p->timeConstant);
+
+	return(p);
+}
+
+float tPeriod_findPeriod (tPeriod* p, float sample)
+{
+    float period;
+    int i, iLast;
+
+    i = (p->curBlock*p->frameSize);
+    iLast = (p->lastBlock*p->frameSize)+p->index;
+
+    p->i = i;
+    p->iLast = iLast;
+
+    p->inBuffer[i+p->index] = sample;
+
+    p->index++;
+    p->indexstore = p->index;
+    if (p->index >= p->frameSize)
+    {
+        p->index = 0;
+
+        tEnvProcessBlock(p->env, &(p->inBuffer[i]));
+
+        tSNAC_ioSamples(p->snac, &(p->inBuffer[i]), &(p->outBuffer[i]), p->frameSize);
+        p->period = tSNAC_getPeriod(p->snac);
+
+        p->curBlock++;
+		if (p->curBlock >= p->framesPerBuffer) p->curBlock = 0;
+		p->lastBlock++;
+		if (p->lastBlock >= p->framesPerBuffer) p->lastBlock = 0;
+    }
+
+    return period;
+}
+
+void tPeriod_setHopSize(tPeriod* p, int hs)
+{
+    p->hopSize = hs;
+}
+
+void tPeriod_setWindowSize(tPeriod* p, int ws)
+{
+    p->windowSize = ws;
+}
+
+#endif
+
+#if N_PITCHSHIFT
+
+void tPitchShift_setPitchFactor(tPitchShift* ps, float pf)
+{
+	ps->pitchFactor = pf;
+}
+
+static int pitchshift_attackdetect(tPitchShift* ps)
+{
+    float envout;
+
+    envout = tEnvTick(ps->p->env);
+
+    if (envout >= 1.0f)
+    {
+        ps->p->lastmax = ps->p->max;
+        if (envout > ps->p->max)
+        {
+            ps->p->max = envout;
+        }
+        else
+        {
+            ps->p->deltamax = envout - ps->p->max;
+            ps->p->max = ps->p->max * ps->radius;
+        }
+        ps->p->deltamax = ps->p->max - ps->p->lastmax;
+    }
+
+    ps->p->fba = ps->p->fba ? (ps->p->fba - 1) : 0;
+
+    return (ps->p->fba == 0 && (ps->p->max > 60 && ps->p->deltamax > 6)) ? 1 : 0;
+}
+
+tPitchShift* tPitchShift_init (tPeriod* p, float* out, int bufSize)
+{
+	tPitchShift* ps = &oops.tPitchShiftRegistry[oops.registryIndex[T_PITCHSHIFT]++];
+	ps->p = p;
+
+	ps->outBuffer = out;
+	ps->bufSize = bufSize;
+	ps->frameSize = p->frameSize;
+	ps->framesPerBuffer = ps->bufSize / ps->frameSize;
+	ps->curBlock = 1;
+	ps->lastBlock = 0;
+	ps->index = 0;
+	ps->pitchFactor = 1.0f;
+
+	ps->sola = tSOLAD_init();
+	ps->hp = tHighpassInit(HPFREQ);
+
+	tSOLAD_setPitchFactor(ps->sola, DEFPITCHRATIO);
+
+	return(ps);
+}
+
+float tPitchShift_shift (tPitchShift* ps)
+{
+    float period, out;
+    int i, iLast;
+
+
+    i = ps->p->i;
+    iLast = ps->p->iLast;
+
+    out = tHighpassTick(ps->hp, ps->outBuffer[iLast]);
+
+    ps->index++;
+    if (ps->index >= ps->frameSize)
+    {
+    	ps->index = 0;
+    	period = ps->p->period;
+
+    	if(pitchshift_attackdetect(ps) == 1)
+		{
+			ps->p->fba = 5;
+			tSOLAD_setReadLag(ps->sola, ps->p->windowSize);
+		}
+
+        tSOLAD_setPeriod(ps->sola, period);
+        tSOLAD_setPitchFactor(ps->sola, ps->pitchFactor);
+
+        tSOLAD_ioSamples(ps->sola, &(ps->p->inBuffer[i]), &(ps->outBuffer[i]), ps->frameSize);
+    }
+
+    return out;
+}
+
+float tPitchShift_shiftToFreq (tPitchShift* ps, float freq)
+{
+    float period, out;
+    int i, iLast;
+
+
+    i = ps->p->i;
+	iLast = ps->p->iLast;
+
+    out = tHighpassTick(ps->hp, ps->outBuffer[iLast]);
+
+    if (ps->p->indexstore >= ps->frameSize)
+    {
+    	period = ps->p->period;
+
+    	if(pitchshift_attackdetect(ps) == 1)
+		{
+			ps->p->fba = 5;
+			tSOLAD_setReadLag(ps->sola, ps->p->windowSize);
+		}
+
+        tSOLAD_setPeriod(ps->sola, period);
+
+        ps->pitchFactor = period*freq*oops.invSampleRate;
+        tSOLAD_setPitchFactor(ps->sola, ps->pitchFactor);
+
+        tSOLAD_ioSamples(ps->sola, &(ps->p->inBuffer[i]), &(ps->outBuffer[i]), ps->frameSize);
+    }
+    return out;
+}
+
+float tPitchShift_shiftToFunc (tPitchShift* ps, float (*fun)(float))
+{
+    float period, out;
+    int i, iLast;
+
+
+    i = (ps->curBlock*ps->frameSize);
+    iLast = (ps->lastBlock*ps->frameSize)+ps->index;
+
+    out = tHighpassTick(ps->hp, ps->outBuffer[iLast]);
+
+    ps->index++;
+    if (ps->index >= ps->frameSize)
+    {
+    	ps->index = 0;
+    	period = ps->p->period;
+
+    	if(pitchshift_attackdetect(ps) == 1)
+		{
+			ps->p->fba = 5;
+			tSOLAD_setReadLag(ps->sola, ps->p->windowSize);
+		}
+
+        tSOLAD_setPeriod(ps->sola, period);
+
+        ps->pitchFactor = period/fun(period);
+        tSOLAD_setPitchFactor(ps->sola, ps->pitchFactor);
+
+        tSOLAD_ioSamples(ps->sola, &(ps->p->inBuffer[i]), &(ps->outBuffer[i]), ps->frameSize);
+
+        ps->curBlock++;
+		if (ps->curBlock >= ps->p->framesPerBuffer) ps->curBlock = 0;
+		ps->lastBlock++;
+		if (ps->lastBlock >= ps->framesPerBuffer) ps->lastBlock = 0;
+    }
+
+    return out;
+}
+
+
+
+
 
 #endif
 

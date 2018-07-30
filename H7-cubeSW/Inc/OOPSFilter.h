@@ -129,4 +129,14 @@ void        tPitchShifter_setHopSize        (tPitchShifter* const, int hs);
 void        tPitchShifter_setWindowSize     (tPitchShifter* const, int ws);
 float		tPitchShifter_getPeriod			(tPitchShifter* const);
 
+tPeriod* 	tPeriod_init					(float* in, float* out, int bufSize, int frameSize);
+float 		tPeriod_findPeriod				(tPeriod* const, float sample);
+void 		tPeriod_setHopSize				(tPeriod* p, int hs);
+void 		tPeriod_setWindowSize			(tPeriod* p, int ws);
+tPitchShift*	tPitchShift_init			(tPeriod* const, float* out, int bufSize);
+float 		tPitchShift_shift				(tPitchShift* const);
+float 		tPitchShift_shiftToFunc 		(tPitchShift* const, float (*fun)(float));
+float		tPitchShift_shiftToFreq			(tPitchShift* const, float freq);
+void 		tPitchShift_setPitchFactor		(tPitchShift* const, float pf);
+
 #endif  // OOPSFILTER_H_INCLUDED

@@ -740,7 +740,7 @@ typedef struct _tEnv
     uint16_t x_allocforvs;               /* extra buffer for DSP vector size */
 } tEnv;
 
-#define FORD 7
+#define FORD 10
 #define FORMANT_BUFFER_SIZE 2048
 
 typedef struct _tFormantShifter
@@ -804,6 +804,55 @@ typedef struct _tPitchShifter
     void (*sampleRateChanged)(struct _tPitchShifter *self);
 } tPitchShifter;
 
+typedef struct _tPeriod
+{
+	tEnv* env;
+	tSNAC* snac;
+	float* inBuffer;
+	float* outBuffer;
+	int frameSize;
+	int bufSize;
+	int framesPerBuffer;
+	int curBlock;
+	int lastBlock;
+	int i;
+	int indexstore;
+	int iLast;
+	int index;
+	float period;
+
+	uint16_t hopSize;
+	uint16_t windowSize;
+	uint8_t fba;
+
+	float timeConstant;
+	float radius;
+	float max;
+	float lastmax;
+	float deltamax;
+
+}tPeriod;
+
+typedef struct _tPitchShift
+{
+	tSOLAD* sola;
+	tHighpass* hp;
+	tPeriod* p;
+
+	float* outBuffer;
+	int frameSize;
+	int bufSize;
+
+	int framesPerBuffer;
+	int curBlock;
+	int lastBlock;
+	int index;
+
+	float pitchFactor;
+	float timeConstant;
+	float radius;
+}tPitchShift;
+
 
 // ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ //
 void     tPhasorSampleRateChanged (tPhasor *p);
@@ -838,7 +887,9 @@ void     tSNACSampleRateChanged(tSNAC* n);
 
 void     tLockhartWavefolderSampleRateChanged(tLockhartWavefolder* n);
 void     tFormantShifterSampleRateChanged(tFormantShifter* n);
-void     tPitchShifterSampleRateChanged(tFormantShifter* n);
+void     tPitchShifterSampleRateChanged(tPitchShifter* n);
+void	 tPeriodSampleRateChanged(tPeriod* n);
+void	 tPitchShiftSampleRateChanged(tPitchShift* n);
 
 typedef enum OOPSRegistryIndex
 {
@@ -886,6 +937,8 @@ typedef enum OOPSRegistryIndex
     T_LOCKHARTWAVEFOLDER,
     T_ENV,
     T_PITCHSHIFTER,
+	T_PERIOD,
+	T_PITCHSHIFT,
     T_INDEXCNT
 }OOPSRegistryIndex;
 
@@ -1075,8 +1128,16 @@ typedef struct _OOPS
 #if N_PITCHSHIFTER
     tPitchShifter               tPitchShifterRegistry[N_PITCHSHIFTER];
 #endif
+
+#if N_PERIOD
+    tPeriod              	tPeriodRegistry[N_PERIOD];
+#endif
     
+#if N_PITCHSHIFT
+    tPitchShift               	tPitchShiftRegistry[N_PITCHSHIFT];
+#endif
     
+
     int registryIndex[T_INDEXCNT];
 		
 } OOPS;

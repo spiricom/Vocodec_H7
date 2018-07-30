@@ -40,6 +40,8 @@ float outBuffer[NUM_SHIFTERS][2048];
 
 tFormantShifter* fs;
 tPitchShifter* ps[NUM_SHIFTERS];
+tPeriod* p;
+tPitchShift* pshift[NUM_SHIFTERS];
 tRamp* ramp[MPOLY_NUM_MAX_VOICES];
 tMPoly* mpoly;
 tSawtooth* osc[NUM_VOICES];
@@ -91,10 +93,7 @@ void noteOn(int key, int velocity)
 			if (tMPoly_isOn(mpoly, i) == 1)
 			{
 				tRampSetDest(ramp[i], (float)(tMPoly_getVelocity(mpoly, i) * INV_TWO_TO_7));
-				float tempNote = tMPoly_getPitch(mpoly, i);
-				float tempPitchClass = ((((int)tempNote) - keyCenter) % 12 );
-				float tunedNote = tempNote + centsDeviation[(int)tempPitchClass];
-				freq[i] = OOPS_midiToFrequency(tunedNote);
+				freq[i] = OOPS_midiToFrequency(tMPoly_getPitch(mpoly, i));
 				tSawtoothSetFreq(osc[i], freq[i]);
 			}
 		}
@@ -105,21 +104,17 @@ void noteOn(int key, int velocity)
 	{
 		chordArray[key%12]++;
 		tMPoly_noteOn(mpoly, key, velocity);
-		/*
+
 		for (int i = 0; i < mpoly->numVoices; i++)
 		{
-
 			if (tMPoly_isOn(mpoly, i) == 1)
 			{
 				tRampSetDest(ramp[i], (float)(tMPoly_getVelocity(mpoly, i) * INV_TWO_TO_7));
-				float tempNote = tMPoly_getPitch(mpoly, i);
-				float tempPitchClass = ((((int)tempNote) - keyCenter) % 12 );
-				float tunedNote = tempNote + centsDeviation[(int)tempPitchClass];
-				freq[i] = OOPS_midiToFrequency(tunedNote);
+				freq[i] = OOPS_midiToFrequency(tMPoly_getPitch(mpoly, i));
 				tSawtoothSetFreq(osc[i], freq[i]);
 			}
 		}
-		*/
+
 
 		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_SET);    //LED3
 	}
@@ -134,10 +129,9 @@ void noteOff(int key, int velocity)
 
 	voice = tMPoly_noteOff(mpoly, key);
 	if (voice >= 0) tRampSetDest(ramp[voice], 0.0f);
-	/*
+
 	for (int i = 0; i < mpoly->numVoices; i++)
 	{
-
 		if (tMPoly_isOn(mpoly, i) == 1)
 		{
 			tRampSetDest(ramp[i], (float)(tMPoly_getVelocity(mpoly, i) * INV_TWO_TO_7));
@@ -146,7 +140,7 @@ void noteOff(int key, int velocity)
 		}
 
 	}
-*/
+
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_RESET);    //LED3
 }
 
@@ -223,13 +217,20 @@ void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTy
 		ramp[i] = tRampInit(10.0f, 1);
 	}
 
+	p = tPeriod_init(inBuffer[0], outBuffer[0], 2048, PS_FRAME_SIZE);
+
+	tPeriod_setWindowSize(p, ENV_WINDOW_SIZE);
+	tPeriod_setHopSize(p, ENV_HOP_SIZE);
+
 	/* Initialize devices for pitch shifting */
 	for (int i = 0; i < NUM_SHIFTERS; ++i)
 	{
-		ps[i] = tPitchShifter_init(inBuffer[i], outBuffer[i], 2048, PS_FRAME_SIZE);
+		pshift[i] = tPitchShift_init(p, outBuffer[i], 2048);
+		/*ps[i] = tPitchShifter_init(inBuffer[i], outBuffer[i], 2048, PS_FRAME_SIZE);
 		tPitchShifter_setWindowSize(ps[i], ENV_WINDOW_SIZE);
 		tPitchShifter_setHopSize(ps[i], ENV_HOP_SIZE);
-		tPitchShifter_setPitchFactor(ps[i], 1.0f);
+		tPitchShifter_setPitchFactor(ps[i], 1.0f);*/
+
 	}
 
 	writeModeToLCD(mode, upDownMode);
@@ -254,6 +255,7 @@ void audioFrame(uint16_t buffer_offset)
 	}
 	else if (mode == PitchShiftMode)
 	{
+
 		for (int cc=0; cc < numSamples; cc++)
 		{
 			input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31 * 2);
@@ -263,17 +265,23 @@ void audioFrame(uint16_t buffer_offset)
 			pitchFactor = (adcVals[1] * INV_TWO_TO_16) * 3.55f + 0.45f;
 			formantKnob = adcVals[3] * INV_TWO_TO_16;
 			formantShiftFactor = (formantKnob * 2.0f) - 1.0f;
-			tPitchShifter_setPitchFactor(ps[0], pitchFactor);
+			tPitchShift_setPitchFactor(pshift[0], pitchFactor);
 
 			if (formantCorrect > 0)
 			{
 				sample = tFormantShifterRemove(fs, input);
-				sample = tPitchShifter_tick(ps[0], sample);
+				//sample = tPitchShifter_tick(ps[0], sample);
+				tPeriod_findPeriod(p, sample);
+				sample = tPitchShift_shift(pshift[0]);
 				output = tFormantShifterAdd(fs, sample, 0.0f); //can replace 0.0f with formantShiftFactor
 			}
 			else
 			{
-				output = tPitchShifter_tick(ps[0], input);
+				//output = tPitchShifter_tick(ps[0], input);
+				tPeriod_findPeriod(p, input);
+
+				output = tPitchShift_shift(pshift[0]);
+
 			}
 
 			audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) (output * TWO_TO_31);
@@ -292,12 +300,17 @@ void audioFrame(uint16_t buffer_offset)
 				if (formantCorrect > 0)
 				{
 					sample = tFormantShifterRemove(fs, input);
-					sample = tPitchShifterToFunc_tick(ps[0], sample, nearestPeriod);
+					tPeriod_findPeriod(p, sample);
+					sample = tPitchShift_shiftToFunc(pshift[0], nearestPeriod);
+					//sample = tPitchShifterToFunc_tick(ps[0], sample, nearestPeriod);
 					output = tFormantShifterAdd(fs, sample, 0.0f);
 				}
 				else
 				{
-					output = tPitchShifterToFunc_tick(ps[0], input, nearestPeriod);
+					//output = tPitchShifterToFunc_tick(ps[0], input, nearestPeriod);
+					tPeriod_findPeriod(p, input);
+					output = tPitchShift_shiftToFunc(pshift[0], nearestPeriod);
+
 				}
 
 				audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) (output * TWO_TO_31);
@@ -315,10 +328,13 @@ void audioFrame(uint16_t buffer_offset)
 
 				if (formantCorrect > 0) sample = tFormantShifterRemove(fs, input);
 
+				tPeriod_findPeriod(p, sample);
+
 				for (int i = 0; i < activeShifters; ++i)
 				{
 					freq[i] = OOPS_midiToFrequency(tMPoly_getPitch(mpoly, i));
-					output += tPitchShifterToFreq_tick(ps[i], sample, freq[i]) * tRampTick(ramp[i]);
+					output += tPitchShift_shiftToFreq(pshift[i], freq[i]) * tRampTick(ramp[i]);
+					//output += tPitchShifterToFreq_tick(ps[i], sample, freq[i]) * tRampTick(ramp[i]);
 				}
 
 				if (formantCorrect > 0) output = tFormantShifterAdd(fs, output, 0.0f);
@@ -331,21 +347,8 @@ void audioFrame(uint16_t buffer_offset)
 	{
 		for (int i = 0; i < activeVoices; i++)
 		{
-			if (tMPoly_getVelocity(mpoly, i) > 0)
-			{
-				tRampSetDest(ramp[i], 1.0f);
-			}
-			else
-			{
-				tRampSetDest(ramp[i], 0.0f);
-			}
-
-			float tempNote = tMPoly_getPitch(mpoly, i);
-			float tempPitchClass = ((((int)tempNote) - keyCenter) % 12 );
-			float tunedNote = tempNote + centsDeviation[(int)tempPitchClass];
-			freq[i] = OOPS_midiToFrequency(tunedNote);
+			freq[i] = OOPS_midiToFrequency(tMPoly_getPitch(mpoly, i));
 			tSawtoothSetFreq(osc[i], freq[i]);
-
 		}
 		for (int cc=0; cc < numSamples; cc++)
 		{
