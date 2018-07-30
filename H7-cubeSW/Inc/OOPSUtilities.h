@@ -90,7 +90,7 @@ tMPoly*     tMPoly_init(int numVoices);
 void        tMPoly_tick(tMPoly* const);
 
 //ADDING A NOTE
-void        tMPoly_noteOn(tMPoly* const, int note, uint8_t vel);
+int        tMPoly_noteOn(tMPoly* const, int note, uint8_t vel);
 
 int         tMPoly_noteOff(tMPoly* const, uint8_t note);
 

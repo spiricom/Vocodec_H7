@@ -25,7 +25,7 @@
 #define EXP_DECAY_TABLE_SIZE 65536
 #define ATTACK_DECAY_INC_TABLE_SIZE 65536
 #define TANH1_TABLE_SIZE 65536
-#define ADC1_TABLE_SIZE 4096
+#define DECAY_COEFF_TABLE_SIZE 4096
 #define MTOF1_TABLE_SIZE 4096
 #define FILTERTAN_TABLE_SIZE 4096
 
@@ -58,8 +58,7 @@ extern const float filtertan[FILTERTAN_TABLE_SIZE];
 
 #if INC_MISC_WT
 extern const float mtof1[MTOF1_TABLE_SIZE];
-extern const float adc1[ADC1_TABLE_SIZE];
-
+extern const float decayCoeffTable[DECAY_COEFF_TABLE_SIZE];
 extern const float tanh1[TANH1_TABLE_SIZE];
 #endif
 

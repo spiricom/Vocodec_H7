@@ -1226,15 +1226,15 @@ void tMPoly_pitchBend(tMPoly* poly, int pitchBend)
     poly->pitchBend = pitchBend;
 }
 
-void tMPoly_noteOn(tMPoly* poly, int note, uint8_t vel)
+int tMPoly_noteOn(tMPoly* poly, int note, uint8_t vel)
 {
     // if not in keymap or already on stack, dont do anything. else, add that note.
-    if (tStack_contains(poly->stack, note) >= 0) return;
+    if (tStack_contains(poly->stack, note) >= 0) return -1;
     else
     {
         tMPoly_orderedAddToStack(poly, note);
         tStack_add(poly->stack, note);
-        
+        int alteredVoice = -1;
         oBool found = OFALSE;
         for (int i = 0; i < poly->numVoices; i++)
         {
@@ -1259,7 +1259,7 @@ void tMPoly_noteOn(tMPoly* poly, int note, uint8_t vel)
                 poly->notes[note][1] = i;
                 
                 tRampSetDest(poly->ramp[i], poly->voices[i][0]);
-                
+                alteredVoice = i;
                 break;
             }
         }
@@ -1283,12 +1283,14 @@ void tMPoly_noteOn(tMPoly* poly, int note, uint8_t vel)
                     
                     tRampSetTime(poly->ramp[whichVoice], poly->glideTime);
                     tRampSetDest(poly->ramp[whichVoice], poly->voices[whichVoice][0]);
-                    
+                    alteredVoice = whichVoice;
 					break;
         		}
         	}
         }
+        return alteredVoice;
     }
+
 }
 
 
