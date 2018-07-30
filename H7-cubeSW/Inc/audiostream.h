@@ -35,7 +35,7 @@
 
 #include "OOPS.h"
 
-#define AUDIO_FRAME_SIZE      128
+#define AUDIO_FRAME_SIZE      196
 #define HALF_BUFFER_SIZE      AUDIO_FRAME_SIZE * 2 //number of samples per half of the "double-buffer" (twice the audio frame size because there are interleaved samples for both left and right channels)
 #define AUDIO_BUFFER_SIZE     AUDIO_FRAME_SIZE * 4 //number of samples in the whole data structure (four times the audio frame size because of stereo and also double-buffering/ping-ponging)
 
@@ -143,10 +143,12 @@ typedef enum UpDownMode
 
 typedef enum VocodecMode
 {
-	FormantShiftMode = 0,
+	VocoderMode=0,
 	PitchShiftMode,
 	AutotuneMode,
-	VocoderMode,
+	FormantShiftMode,
+	DrumboxMode,
+	ModeCount,
 	ModeNil
 } VocodecMode;
 

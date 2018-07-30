@@ -2,6 +2,7 @@
 #include "audiostream.h"
 #include "main.h"
 #include "codec.h"
+#include "OOPSWavetables.h"
 
 
 
@@ -9,6 +10,7 @@
 // at(0x3....) is to put them in the D2 domain of SRAM where the DMA can access them
 // (otherwise the TX times out because the DMA can't see the data location) -JS
 
+#define NUM_FB_DELAY_TABLES 8
 
 int32_t audioOutBuffer[AUDIO_BUFFER_SIZE] __ATTR_RAM_D2;
 int32_t audioInBuffer[AUDIO_BUFFER_SIZE] __ATTR_RAM_D2;
@@ -46,9 +48,37 @@ tRamp* ramp[MPOLY_NUM_MAX_VOICES];
 tMPoly* mpoly;
 tSawtooth* osc[NUM_VOICES];
 tTalkbox* vocoder;
+tCycle* sin1;
+tNoise* noise1;
+ tRamp* rampFeedback;
+tRamp* rampSineFreq;
+tRamp* rampDelayFreq;
+ tHighpass* highpass1;
+tHighpass* highpass2;
+ tEnvelopeFollower* envFollowNoise;
+tEnvelopeFollower* envFollowSine;
+ tDelayL* delay1;
+ float feedbacksamp = 0.0f;
+float newFreq = 0.0f;
+float newDelay = 0.0f;
+float newFeedback = 0.0f;
+float gainBoost = 1.0f;
+float m_input1 = 0.0f;
+float	m_output0 = 0.0f;
+ #define FEEDBACK_LOOKUP_SIZE 5
+#define DELAY_LOOKUP_SIZE 4
+float FeedbackLookup[FEEDBACK_LOOKUP_SIZE] = { 0.0f, 0.8f, .999f, 1.0f, 1.03f };
+//float DelayLookup[DELAY_LOOKUP_SIZE] = { 16000.f, 1850.f, 180.f, 40.f };
+float DelayLookup[DELAY_LOOKUP_SIZE] = { 50.f, 180.f, 1400.f, 16300.f };
+ float feedbackDelayPeriod[NUM_FB_DELAY_TABLES];
+//const float *feedbackDelayTable[NUM_FB_DELAY_TABLES] = { FB1, FB2, FB3, FB4, FB5, FB6, FB7, FB8 };
+ void readExternalADC(void);
+float interpolateDelayControl(float raw_data);
+float interpolateFeedback(float raw_data);
+float ksTick(float noise_in);
 
 UpDownMode upDownMode = ModeChange;
-VocodecMode mode = FormantShiftMode;
+VocodecMode mode = 0;
 AutotuneType atType = NearestType;
 
 float formantShiftFactor;
@@ -79,7 +109,7 @@ static void writeModeToLCD(VocodecMode in, UpDownMode ud);
 
 void noteOn(int key, int velocity)
 {
-	int voice;
+	volatile int voice;
 	if (!velocity)
 	{
 		//myVol = 0.0f;
@@ -115,7 +145,7 @@ void noteOn(int key, int velocity)
 			}
 		}
 
-
+		voice = tMPoly_noteOn(mpoly, key, velocity);
 		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_SET);    //LED3
 	}
 }
@@ -123,12 +153,12 @@ void noteOn(int key, int velocity)
 void noteOff(int key, int velocity)
 {
 	myVol = 0.0f;
-	int voice;
+	volatile int myVoice;
 
 	if (chordArray[key%12] > 0) chordArray[key%12]--;
 
-	voice = tMPoly_noteOff(mpoly, key);
-	if (voice >= 0) tRampSetDest(ramp[voice], 0.0f);
+	myVoice = tMPoly_noteOff(mpoly, key);
+	if (myVoice >= 0) tRampSetDest(ramp[myVoice], 0.0f);
 
 	for (int i = 0; i < mpoly->numVoices; i++)
 	{
@@ -140,7 +170,7 @@ void noteOff(int key, int velocity)
 		}
 
 	}
-
+	myVoice = tMPoly_noteOff(mpoly, key);
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_RESET);    //LED3
 }
 
@@ -175,11 +205,34 @@ float nearestPeriod(float period)
 
 	return notePeriods[index];
 }
-
+char* modeNames[ModeCount*2];
 void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTypeDef* hsaiIn, RNG_HandleTypeDef* hrand, uint16_t* myADCArray)
 { 
+
+
+	modeNames[VocoderMode] = "VOCODER   ";
+	modeNames[VocoderMode+ModeCount] = "VOCODER   ";
+	modeNames[PitchShiftMode] = "PITCHSHIFT";
+	modeNames[PitchShiftMode+ModeCount] = "PITCHSHIFc";
+	modeNames[FormantShiftMode] = "FORMANT   ";
+	modeNames[FormantShiftMode+ModeCount] = "FORMANT  c";
+	modeNames[AutotuneMode] = "AUTOTUNE  ";
+	modeNames[AutotuneMode+ModeCount] = "AUTOTUNE c";
+	modeNames[DrumboxMode] = "DRUMBOX   ";
+	modeNames[DrumboxMode+ModeCount] = "DRUMBOX   ";
 	// Initialize the audio library. OOPS.
 	OOPSInit(SAMPLE_RATE, AUDIO_FRAME_SIZE, &randomNumber);
+
+	sin1 = tCycleInit();
+	noise1 = tNoiseInit(PinkNoise);
+	rampFeedback = tRampInit(10.0f, 1);
+	rampSineFreq = tRampInit(10.0f, 1);
+	rampDelayFreq = tRampInit(10.0f, 1);
+	highpass1 = tHighpassInit(20.0f);
+	highpass2 = tHighpassInit(20.0f);
+	envFollowNoise = tEnvelopeFollowerInit(0.00001f, 0.0f);
+	envFollowSine = tEnvelopeFollowerInit(0.00001f, 0.0f);
+	delay1 = tDelayLInit(1000.0f);
 
 	for (int i = 0; i < 128; i++)
 	{
@@ -343,10 +396,11 @@ void audioFrame(uint16_t buffer_offset)
 			}
 		}
 	}
-	if (mode == VocoderMode)
+	else if (mode == VocoderMode)
 	{
 		for (int i = 0; i < activeVoices; i++)
 		{
+			tRampSetDest(ramp[i], (tMPoly_getVelocity(mpoly, i) > 0));
 			freq[i] = OOPS_midiToFrequency(tMPoly_getPitch(mpoly, i));
 			tSawtoothSetFreq(osc[i], freq[i]);
 		}
@@ -373,37 +427,108 @@ void audioFrame(uint16_t buffer_offset)
 			audioOutBuffer[buffer_offset + (cc*2)]  = (int32_t) (output * TWO_TO_31);
 		}
 	}
+	else if (mode == DrumboxMode)
+	{
+		for (int cc=0; cc < numSamples; cc++)
+		{
+			sample = 0.0f;
+			float audioIn = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31);
+
+			newFeedback = interpolateFeedback(adcVals[1]);
+			tRampSetDest(rampFeedback,newFeedback);
+
+			newDelay = interpolateDelayControl(TWO_TO_16 - adcVals[2]);
+			tRampSetDest(rampDelayFreq,newDelay);
+
+			newFreq =  ((adcVals[1] * INV_TWO_TO_16) * 4.0f ) * ((1.0f / newDelay) * 48000.0f);
+			tRampSetDest(rampSineFreq,newFreq);
+
+			tEnvelopeFollowerDecayCoeff(envFollowSine,decayCoeffTable[(adcVals[3] >> 4)]);
+			tEnvelopeFollowerDecayCoeff(envFollowNoise,0.80f);
+
+			tCycleSetFreq(sin1, tRampTick(rampSineFreq));
+
+			tDelayLSetDelay(delay1,tRampTick(rampDelayFreq));
+
+			sample = ((ksTick(audioIn) * 0.7f) + audioIn * 0.8f);
+			float tempSinSample = OOPS_shaper(((tCycleTick(sin1) * tEnvelopeFollowerTick(envFollowSine, audioIn)) * 0.6f), 0.5f);
+			sample += tempSinSample * 0.6f;
+			sample += (tNoiseTick(noise1) * tEnvelopeFollowerTick(envFollowNoise, audioIn));
+
+			sample *= gainBoost;
+
+			sample = tHighpassTick(highpass1, sample);
+			sample = OOPS_shaper(sample * 0.6, 1.0f);
+
+			audioOutBuffer[buffer_offset + (cc*2)]  = (int32_t) (sample * TWO_TO_31);
+		}
+	}
 }
 
 float rightInput = 0.0f;
 
-float audioTickL(float audioIn) 
+float ksTick(float noise_in)
 {
-	sample = 0.0f;
+	float temp_sample;
+	temp_sample = noise_in + (feedbacksamp * tRampTick(rampFeedback)); //feedback param actually
 
-	return sample;
+	feedbacksamp = tDelayLTick(delay1, temp_sample);
+
+	m_output0 = 0.5f * m_input1 + 0.5f * feedbacksamp;
+	m_input1 = feedbacksamp;
+	feedbacksamp = m_output0;
+	temp_sample = (tHighpassTick(highpass2,feedbacksamp) + 1.0f) * 0.5f;
+	temp_sample = OOPS_shaper(temp_sample, 1.5f);
+
+	return temp_sample;
 }
 
-float audioTickR(float audioIn)
+float interpolateDelayControl(float raw_data)
 {
-	rightInput = audioIn;
-	//sample = audioIn;
-	return audioIn;
+	float scaled_raw = raw_data * INV_TWO_TO_16;
+	if (scaled_raw < 0.2f)
+	{
+		return (DelayLookup[0] + ((DelayLookup[1] - DelayLookup[0]) * (scaled_raw * 5.f)));
+	}
+	else if (scaled_raw < 0.6f)
+	{
+		return (DelayLookup[1] + ((DelayLookup[2] - DelayLookup[1]) * ((scaled_raw - 0.2f) * 2.5f)));
+	}
+	else
+	{
+		return (DelayLookup[2] + ((DelayLookup[3] - DelayLookup[2]) * ((scaled_raw - 0.6f) * 2.5f)));
+	}
 }
 
-char* modeNames[8] =
+float interpolateFeedback(float raw_data)
 {
-	"FORMANT   ", "PITCHSHIFT",
-	"AUTOTUNE  ", "VOCODER   ",
-	"FORMANT  c", "PITCHSHIFc",
-	"AUTOTUNE c", "VOCODER   ",
-};
+	float scaled_raw = raw_data * INV_TWO_TO_16;
+	if (scaled_raw < 0.2f)
+	{
+		return (FeedbackLookup[0] + ((FeedbackLookup[1] - FeedbackLookup[0]) * ((scaled_raw) * 5.0f)));
+	}
+	else if (scaled_raw < 0.6f)
+	{
+		return (FeedbackLookup[1] + ((FeedbackLookup[2] - FeedbackLookup[1]) * ((scaled_raw - 0.2f) * 2.5f)));
+	}
+	if (scaled_raw < .95f)
+	{
+		return (FeedbackLookup[2] + ((FeedbackLookup[3] - FeedbackLookup[2]) * ((scaled_raw - 0.6f) * 2.857142857142f)));
+	}
+	else
+	{
+		return (FeedbackLookup[3] + ((FeedbackLookup[4] - FeedbackLookup[3]) * ((scaled_raw - 0.95f) * 20.0f )));
+	}
+}
+
+
+
 
 #define ASCII_NUM_OFFSET 48
 static void writeModeToLCD(VocodecMode in, UpDownMode ud)
 {
 	int i = in;
-	if (formantCorrect > 0) i += 4;
+	if (formantCorrect > 0) i += ModeCount;
 	OLEDwriteLine(modeNames[i], 10, FirstLine);
 	if (in == AutotuneMode)
 	{
