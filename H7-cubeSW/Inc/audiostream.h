@@ -55,6 +55,8 @@ extern int32_t audioOutBuffer[AUDIO_BUFFER_SIZE];
 extern float noteperiod;
 extern float pitchFactor;
 extern float formantKnob;
+extern float newFeedback;
+extern float newDelay;
 
 // MIDI FUNCTIONS
 void noteOn(int key, int velocity);
@@ -144,9 +146,11 @@ typedef enum UpDownMode
 typedef enum VocodecMode
 {
 	VocoderMode=0,
+	FormantShiftMode,
 	PitchShiftMode,
 	AutotuneMode,
-	FormantShiftMode,
+	DelayMode,
+	BitcrusherMode,
 	DrumboxMode,
 	ModeCount,
 	ModeNil

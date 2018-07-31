@@ -8,9 +8,11 @@
 GFX theGFX;
 void OLEDwriteString(uint8_t* myCharArray, uint8_t arrayLength, uint8_t startCursor, OLEDLine line)
 {
-	uint8_t cursorX = startCursor; // (startCursor * 12) + 4
+	uint8_t cursorX = startCursor;
 	uint8_t cursorY = 15 + (16 * (line%2));
 	GFXsetCursor(&theGFX, cursorX, cursorY);
+
+	GFXfillRect(&theGFX, startCursor, line*16, arrayLength*12, (line*16)+16, 0);
 	for (int i = 0; i < arrayLength; ++i)
 	{
 		GFXwrite(&theGFX, myCharArray[i]);

@@ -298,6 +298,11 @@ int main(void)
 		  {
 			  OLEDwriteFixedFloatLine(pitchFactor, 9, 2, SecondLine);
 		  }
+		  else if (mode == DelayMode || mode == DrumboxMode)
+		  {
+			  OLEDwriteFixedFloat(newDelay*oops.invSampleRate*2.0f, 4, 3, 4, SecondLine);
+			  OLEDwriteFixedFloat(newFeedback, 3, 2, 76, SecondLine);
+		  }
 		  buttonCheck(); // should happen here, not frame, or else interrupts audio processing
 		  counter = 0;
 	  }
