@@ -166,6 +166,7 @@ typedef enum AutotuneType
 extern VocodecMode mode;
 extern AutotuneType atType;
 extern int activeShifters;
+extern int rateRatio;
 
 void buttonWasPressed(VocodecButton button);
 void buttonWasReleased(VocodecButton button);

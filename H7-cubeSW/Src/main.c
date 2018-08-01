@@ -302,6 +302,10 @@ int main(void)
 			  OLEDwriteFixedFloat(newDelay*oops.invSampleRate, 4, 3, 4, SecondLine);
 			  OLEDwriteFixedFloat(newFeedback, 3, 2, 76, SecondLine);
 		  }
+		  else if (mode == BitcrusherMode)
+		  {
+			  OLEDwriteInt(rateRatio, 3, 4, SecondLine);
+		  }
 		  buttonCheck(); // should happen here, not frame, or else interrupts audio processing
 		  counter = 0;
 	  }

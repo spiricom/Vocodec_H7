@@ -85,7 +85,11 @@ float delayFeedbackSamp = 0.0f;
 float lpFreq;
 float hpFreq;
 
-uint8_t bitDepth = 32;
+#define MAX_DEPTH 16
+uint8_t bitDepth = MAX_DEPTH;
+int rateRatio;
+int lastSamp;
+int sampCount = 0;
 
 UpDownMode upDownMode = ModeChange;
 VocodecMode mode = 0;
@@ -493,10 +497,24 @@ void audioFrame(uint16_t buffer_offset)
 		{
 			int samp = audioInBuffer[buffer_offset+(cc*2)];
 
-			samp = samp / (int) exp2f(32 - bitDepth);
-			samp = samp * (int) exp2f(32 - bitDepth);
+			int twoToCrush = (int) exp2f(32 - bitDepth);
 
-			audioOutBuffer[buffer_offset + (cc*2)] = samp;
+			samp /= twoToCrush;
+			samp *= twoToCrush;
+
+			rateRatio = (int) (((adcVals[1] * INV_TWO_TO_16) - 0.015) * 129) + 1; // 1 - 128 range, need to use weird value
+
+			if (sampCount == 0)
+			{
+				lastSamp = samp;
+			}
+			sampCount++;
+			if (sampCount >= (rateRatio - 1))
+			{
+				sampCount = 0;
+			}
+
+			audioOutBuffer[buffer_offset + (cc*2)] = lastSamp;
 		}
 	}
 	else if (mode == DrumboxMode)
@@ -602,6 +620,7 @@ static void writeModeToLCD(VocodecMode in, UpDownMode ud)
 	int i = in;
 	if (formantCorrect > 0) i += ModeCount;
 	OLEDwriteLine(modeNames[i], 10, FirstLine);
+	OLEDwriteLine("          ", 10, SecondLine);
 	if (in == AutotuneMode)
 	{
 		if ((atType == NearestType) && (lock > 0))
@@ -620,7 +639,7 @@ static void writeModeToLCD(VocodecMode in, UpDownMode ud)
 	}
 	else if (in == BitcrusherMode)
 	{
-		OLEDwriteIntLine(bitDepth, 2, SecondLine);
+		OLEDwriteInt(bitDepth, 2, 76, SecondLine);
 	}
 	//else OLEDwriteLine("          ", 10, SecondLine);
 	if (ud == ParameterChange)
@@ -677,7 +696,7 @@ void buttonWasPressed(VocodecButton button)
 			}
 			else if (mode == BitcrusherMode)
 			{
-				if (bitDepth < 32) bitDepth++;
+				if (bitDepth < MAX_DEPTH) bitDepth++;
 			}
 		}
 	}
