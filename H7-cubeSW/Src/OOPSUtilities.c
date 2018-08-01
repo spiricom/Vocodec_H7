@@ -2178,7 +2178,7 @@ static void atkdtk_init(tAtkDtk *a, int blocksize, int atk, int rel)
     a->env = 0;
     a->blocksize = blocksize;
     a->threshold = DEFTHRESHOLD;
-    a->samplerate = DEFSAMPLERATE;
+    a->samplerate = oops.SampleRate;
     a->prevAmp = 0;
     
     a->env = 0;

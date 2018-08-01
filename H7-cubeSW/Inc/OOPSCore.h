@@ -676,7 +676,6 @@ typedef struct _tSNAC
     void (*sampleRateChanged)(struct _tSNAC *self);
 } tSNAC;
 
-#define DEFSAMPLERATE 44100
 #define DEFBLOCKSIZE 1024
 #define DEFTHRESHOLD 6
 #define DEFATTACK    10

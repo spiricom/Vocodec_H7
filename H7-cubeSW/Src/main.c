@@ -242,7 +242,6 @@ int main(void)
   GFXwrite(&theGFX,'F');
   GFXwrite(&theGFX,'T');
   */
-  OLEDwriteLine("FORMANT   ", 10, FirstLine);
   /*
   OLEDwriteString("OH NOES", 7, 0, FirstLine);
   GFXsetFont(&theGFX, &URW_Gothic_L_Book_16);
@@ -300,7 +299,7 @@ int main(void)
 		  }
 		  else if (mode == DelayMode || mode == DrumboxMode)
 		  {
-			  OLEDwriteFixedFloat(newDelay*oops.invSampleRate*2.0f, 4, 3, 4, SecondLine);
+			  OLEDwriteFixedFloat(newDelay*oops.invSampleRate, 4, 3, 4, SecondLine);
 			  OLEDwriteFixedFloat(newFeedback, 3, 2, 76, SecondLine);
 		  }
 		  buttonCheck(); // should happen here, not frame, or else interrupts audio processing

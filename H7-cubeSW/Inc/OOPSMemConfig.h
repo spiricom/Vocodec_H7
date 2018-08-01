@@ -19,8 +19,8 @@
  *                                                                                                       *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#define NUM_VOICES 6
-#define NUM_SHIFTERS 1
+#define NUM_VOICES 8
+#define NUM_SHIFTERS 6
 #define MPOLY_NUM_MAX_VOICES 8
 #define PS_FRAME_SIZE 1024 // SNAC_FRAME_SIZE in OOPSCore.h should match (or be smaller than?) this
 #define ENV_WINDOW_SIZE 64 // 1024

@@ -799,7 +799,7 @@ tFormantShifter* tFormantShifterInit()
     
     fs->ford = FORD;
     fs->falph = powf(0.001f, 80.0f / (oops.sampleRate));
-    fs->flamb = -(0.8517f*sqrt(atanf(0.06583f*oops.sampleRate))-0.1916f); // or about -0.88 @ 44.1kHz
+    fs->flamb = -(0.8517f*sqrt(atanf(0.06583f*oops.sampleRate))-0.1916f);
     fs->fhp = 0.0f;
     fs->flp = 0.0f;
     fs->flpa = powf(0.001f, 10.0f / (oops.sampleRate));
@@ -1409,16 +1409,13 @@ float tPitchShift_shift (tPitchShift* ps)
     float period, out;
     int i, iLast;
 
-
     i = ps->p->i;
     iLast = ps->p->iLast;
 
     out = tHighpassTick(ps->hp, ps->outBuffer[iLast]);
 
-    ps->index++;
-    if (ps->index >= ps->frameSize)
+    if (ps->p->indexstore >= ps->frameSize)
     {
-    	ps->index = 0;
     	period = ps->p->period;
 
     	if(pitchshift_attackdetect(ps) == 1)
@@ -1440,7 +1437,6 @@ float tPitchShift_shiftToFreq (tPitchShift* ps, float freq)
 {
     float period, out;
     int i, iLast;
-
 
     i = ps->p->i;
 	iLast = ps->p->iLast;
@@ -1472,16 +1468,13 @@ float tPitchShift_shiftToFunc (tPitchShift* ps, float (*fun)(float))
     float period, out;
     int i, iLast;
 
-
-    i = (ps->curBlock*ps->frameSize);
-    iLast = (ps->lastBlock*ps->frameSize)+ps->index;
+    i = ps->p->i;
+  	iLast = ps->p->iLast;
 
     out = tHighpassTick(ps->hp, ps->outBuffer[iLast]);
 
-    ps->index++;
-    if (ps->index >= ps->frameSize)
+    if (ps->p->indexstore >= ps->frameSize)
     {
-    	ps->index = 0;
     	period = ps->p->period;
 
     	if(pitchshift_attackdetect(ps) == 1)

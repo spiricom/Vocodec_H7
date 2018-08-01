@@ -37,7 +37,7 @@ void buttonCheck(void);
 HAL_StatusTypeDef transmit_status;
 HAL_StatusTypeDef receive_status;
 
-float inBuffer[NUM_SHIFTERS][2048];
+float inBuffer[2048];
 float outBuffer[NUM_SHIFTERS][2048];
 
 tFormantShifter* fs;
@@ -238,10 +238,10 @@ void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTy
 	modeNames[AutotuneMode+ModeCount] = "AUTOTUNE c";
 	modeNames[DelayMode] = "DELAY     ";
 	modeNames[DelayMode+ModeCount] = "DELAY     ";
-	modeNames[BitcrusherMode] = "BITCRUSHER";
-	modeNames[BitcrusherMode+ModeCount] = "BITCRUSHER";
-	modeNames[DrumboxMode] = "DRUMBOX   ";
-	modeNames[DrumboxMode+ModeCount] = "DRUMBOX   ";
+	modeNames[BitcrusherMode] = "BITCOINER ";
+	modeNames[BitcrusherMode+ModeCount] = "BITCOINER ";
+	modeNames[DrumboxMode] = "DRUMBIES  ";
+	modeNames[DrumboxMode+ModeCount] = "DRUMBIES  ";
 	// Initialize the audio library. OOPS.
 	OOPSInit(SAMPLE_RATE, AUDIO_FRAME_SIZE, &randomNumber);
 
@@ -292,7 +292,7 @@ void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTy
 		ramp[i] = tRampInit(10.0f, 1);
 	}
 
-	p = tPeriod_init(inBuffer[0], outBuffer[0], 2048, PS_FRAME_SIZE);
+	p = tPeriod_init(inBuffer, outBuffer[0], 2048, PS_FRAME_SIZE);
 	tPeriod_setWindowSize(p, ENV_WINDOW_SIZE);
 	tPeriod_setHopSize(p, ENV_HOP_SIZE);
 
@@ -493,8 +493,8 @@ void audioFrame(uint16_t buffer_offset)
 		{
 			int samp = audioInBuffer[buffer_offset+(cc*2)];
 
-			samp >>= 32 - bitDepth;
-			samp <<= 32 - bitDepth;
+			samp = samp / (int) exp2f(32 - bitDepth);
+			samp = samp * (int) exp2f(32 - bitDepth);
 
 			audioOutBuffer[buffer_offset + (cc*2)] = samp;
 		}
