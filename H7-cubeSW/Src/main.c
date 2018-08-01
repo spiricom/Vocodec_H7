@@ -283,7 +283,7 @@ int main(void)
 	  MX_USB_HOST_Process();
 
 
-	  if (counter >= 200)
+	  if (counter >= 400)
 	  {
 		  if (mode == FormantShiftMode)
 		  {
@@ -305,6 +305,12 @@ int main(void)
 		  else if (mode == BitcrusherMode)
 		  {
 			  OLEDwriteInt(rateRatio, 3, 4, SecondLine);
+			  OLEDwriteInt(bitDepth, 3, 76, SecondLine);
+		  }
+		  else if (mode == LevelMode)
+		  {
+			  OLEDwriteFixedFloat(inputLevel, 4, 3, 4, SecondLine);
+			  OLEDwriteFixedFloat(outputLevel*inputLevel, 4, 3, 76, SecondLine);
 		  }
 		  buttonCheck(); // should happen here, not frame, or else interrupts audio processing
 		  counter = 0;

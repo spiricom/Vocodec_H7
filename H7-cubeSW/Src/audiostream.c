@@ -47,6 +47,7 @@ tPitchShift* pshift[NUM_SHIFTERS];
 tRamp* ramp[MPOLY_NUM_MAX_VOICES];
 tMPoly* mpoly;
 tSawtooth* osc[NUM_VOICES];
+tSawtooth* saw[NUM_VOICES][NUM_OSC];
 tTalkbox* vocoder;
 tCycle* sin1;
 tNoise* noise1;
@@ -86,10 +87,14 @@ float lpFreq;
 float hpFreq;
 
 #define MAX_DEPTH 16
-uint8_t bitDepth = MAX_DEPTH;
+int bitDepth = MAX_DEPTH;
 int rateRatio;
 int lastSamp;
 int sampCount = 0;
+
+uint8_t levelLock = 1;
+float inputLevel = 1.0f;
+float outputLevel = 1.0f;
 
 UpDownMode upDownMode = ModeChange;
 VocodecMode mode = 0;
@@ -99,12 +104,15 @@ float formantShiftFactor;
 float formantKnob;
 uint8_t formantCorrect = 0;
 
-int activeVoices = 4;
+int activeVoices = 8;
 /* PSHIFT vars *************/
 
 int activeShifters = 1;
 float pitchFactor;
 float freq[MPOLY_NUM_MAX_VOICES];
+
+float detuneAmounts[NUM_VOICES][NUM_OSC];
+float detuneSeeds[NUM_VOICES][NUM_OSC];
 
 float notePeriods[128];
 int chordArray[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -124,7 +132,7 @@ static void writeModeToLCD(VocodecMode in, UpDownMode ud);
 
 void noteOn(int key, int velocity)
 {
-	volatile int voice;
+	int voice;
 	if (!velocity)
 	{
 		//myVol = 0.0f;
@@ -174,7 +182,7 @@ void noteOn(int key, int velocity)
 void noteOff(int key, int velocity)
 {
 	myVol = 0.0f;
-	volatile int myVoice;
+	int myVoice;
 
 	if (chordArray[key%12] > 0) chordArray[key%12]--;
 
@@ -233,19 +241,23 @@ char* modeNames[ModeCount*2];
 void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTypeDef* hsaiIn, RNG_HandleTypeDef* hrand, uint16_t* myADCArray)
 { 
 	modeNames[VocoderMode] = "VOCODER   ";
-	modeNames[VocoderMode+ModeCount] = "VOCODER   ";
+	modeNames[VocoderMode+ModeCount] = "V0CODER   ";
 	modeNames[FormantShiftMode] = "FORMANT   ";
-	modeNames[FormantShiftMode+ModeCount] = "FORMANT  c";
+	modeNames[FormantShiftMode+ModeCount] = "F0RMANT   ";
 	modeNames[PitchShiftMode] = "PITCHSHIFT";
-	modeNames[PitchShiftMode+ModeCount] = "PITCHSHIFc";
+	modeNames[PitchShiftMode+ModeCount] = "P0RCHSHIFT";
 	modeNames[AutotuneMode] = "AUTOTUNE  ";
-	modeNames[AutotuneMode+ModeCount] = "AUTOTUNE c";
+	modeNames[AutotuneMode+ModeCount] = "0TTERTUNE ";
 	modeNames[DelayMode] = "DELAY     ";
 	modeNames[DelayMode+ModeCount] = "DELAY     ";
 	modeNames[BitcrusherMode] = "BITCOINER ";
-	modeNames[BitcrusherMode+ModeCount] = "BITCOINER ";
+	modeNames[BitcrusherMode+ModeCount] = "BITC0INER ";
 	modeNames[DrumboxMode] = "DRUMBIES  ";
-	modeNames[DrumboxMode+ModeCount] = "DRUMBIES  ";
+	modeNames[DrumboxMode+ModeCount] = "DRUMBOX   ";
+	modeNames[SynthMode] = "SYNTH     ";
+	modeNames[SynthMode+ModeCount] = "SYNTH     ";
+	modeNames[LevelMode] = "LEVEL     ";
+	modeNames[LevelMode+ModeCount] = "LEVEL LOCK";
 	// Initialize the audio library. OOPS.
 	OOPSInit(SAMPLE_RATE, AUDIO_FRAME_SIZE, &randomNumber);
 
@@ -289,6 +301,13 @@ void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTy
 	for (int i = 0; i < NUM_VOICES; i++)
 	{
 		osc[i] = tSawtoothInit();
+		for (int j = 0; j < NUM_OSC; j++)
+		{
+			detuneSeeds[i][j] = randomNumber();
+			//detuneAmounts[i][j] = (detuneSeeds[i][j] * detuneMax) - (detuneMax * 0.5f);
+			saw[i][j] = tSawtoothInit();
+		}
+
 	}
 
 	for (int i = 0; i < MPOLY_NUM_MAX_VOICES; i++)
@@ -322,10 +341,12 @@ int numSamples = AUDIO_FRAME_SIZE;
 
 void audioFrame(uint16_t buffer_offset)
 {
-	float input, sample, output, output2, mix;
+	float input, sample, output;
 
 	if (mode == VocoderMode)
 	{
+		lpFreq = ((adcVals[1] * INV_TWO_TO_16) * 20000.0f);
+		tSVFSetFreq(lowpass, lpFreq);
 		for (int i = 0; i < activeVoices; i++)
 		{
 			tRampSetDest(ramp[i], (tMPoly_getVelocity(mpoly, i) > 0));
@@ -340,7 +361,7 @@ void audioFrame(uint16_t buffer_offset)
 
 			//tTalkboxSetQuality(vocoder, quality);
 
-			input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31);
+			input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31) * inputLevel;
 			output = 0.0f;
 
 			for (int i = 0; i < activeVoices; i++)
@@ -351,19 +372,22 @@ void audioFrame(uint16_t buffer_offset)
 
 			output = tTalkboxTick(vocoder, output, input);
 
+			output = tSVFTick(lowpass, output);
+
 			output = tanhf(output);
-			audioOutBuffer[buffer_offset + (cc*2)]  = (int32_t) (output * TWO_TO_31);
+			audioOutBuffer[buffer_offset + (cc*2)]  = (int32_t) (output * TWO_TO_31 * outputLevel);
 		}
 	}
 	else if (mode == FormantShiftMode)
 	{
 		for (int cc=0; cc < numSamples; cc++)
 		{
-			input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31 * 2);
+			input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31 * 2)  * inputLevel;
 
 			formantKnob = adcVals[1] * INV_TWO_TO_16;
 			formantShiftFactor = (formantKnob * 2.0f) - 1.0f;
-			audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) (tFormantShifterTick(fs, input, formantShiftFactor) * TWO_TO_31);
+			output = tFormantShifterTick(fs, input, formantShiftFactor);
+			audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) (output * TWO_TO_31 * 0.5f * outputLevel);
 		}
 	}
 	else if (mode == PitchShiftMode)
@@ -371,11 +395,12 @@ void audioFrame(uint16_t buffer_offset)
 
 		for (int cc=0; cc < numSamples; cc++)
 		{
-			input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31 * 2);
+			input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31 * 2)  * inputLevel;
 			sample = 0.0f;
 			output = 0.0f;
 
-			pitchFactor = (adcVals[1] * INV_TWO_TO_16) * 3.55f + 0.45f;
+			//pitchFactor = (adcVals[1] * INV_TWO_TO_16) * 3.55f + 0.45f; //knob values
+			pitchFactor = (adcVals[4] * INV_TWO_TO_16) * 4.49f + 0.43f; //pedal values
 			formantKnob = adcVals[3] * INV_TWO_TO_16;
 			formantShiftFactor = (formantKnob * 2.0f) - 1.0f;
 			tPitchShift_setPitchFactor(pshift[0], pitchFactor);
@@ -383,21 +408,19 @@ void audioFrame(uint16_t buffer_offset)
 			if (formantCorrect > 0)
 			{
 				sample = tFormantShifterRemove(fs, input);
-				//sample = tPitchShifter_tick(ps[0], sample);
 				tPeriod_findPeriod(p, sample);
 				sample = tPitchShift_shift(pshift[0]);
 				output = tFormantShifterAdd(fs, sample, 0.0f); //can replace 0.0f with formantShiftFactor
 			}
 			else
 			{
-				//output = tPitchShifter_tick(ps[0], input);
 				tPeriod_findPeriod(p, input);
 
 				output = tPitchShift_shift(pshift[0]);
 
 			}
 
-			audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) (output * TWO_TO_31);
+			audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) (output * TWO_TO_31  * 0.5f * outputLevel);
 		}
 	}
 	else if (mode == AutotuneMode)
@@ -406,7 +429,7 @@ void audioFrame(uint16_t buffer_offset)
 		{
 			for (int cc=0; cc < numSamples; cc++)
 			{
-				input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31 * 2);
+				input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31 * 2)  * inputLevel;
 				sample = 0.0f;
 				output = 0.0f;
 
@@ -415,18 +438,16 @@ void audioFrame(uint16_t buffer_offset)
 					sample = tFormantShifterRemove(fs, input);
 					tPeriod_findPeriod(p, sample);
 					sample = tPitchShift_shiftToFunc(pshift[0], nearestPeriod);
-					//sample = tPitchShifterToFunc_tick(ps[0], sample, nearestPeriod);
 					output = tFormantShifterAdd(fs, sample, 0.0f);
 				}
 				else
 				{
-					//output = tPitchShifterToFunc_tick(ps[0], input, nearestPeriod);
 					tPeriod_findPeriod(p, input);
 					output = tPitchShift_shiftToFunc(pshift[0], nearestPeriod);
 
 				}
 
-				audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) (output * TWO_TO_31);
+				audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) (output * TWO_TO_31 * 0.5f * outputLevel) ;
 			}
 		}
 		else if (atType == AbsoluteType)
@@ -435,7 +456,7 @@ void audioFrame(uint16_t buffer_offset)
 			{
 				tMPoly_tick(mpoly);
 
-				input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31 * 2);
+				input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31 * 2) * inputLevel;
 				sample = input;
 				output = 0.0f;
 
@@ -447,12 +468,11 @@ void audioFrame(uint16_t buffer_offset)
 				{
 					freq[i] = OOPS_midiToFrequency(tMPoly_getPitch(mpoly, i));
 					output += tPitchShift_shiftToFreq(pshift[i], freq[i]) * tRampTick(ramp[i]);
-					//output += tPitchShifterToFreq_tick(ps[i], sample, freq[i]) * tRampTick(ramp[i]);
 				}
 
 				if (formantCorrect > 0) output = tFormantShifterAdd(fs, output, 0.0f);
 
-				audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) (output * TWO_TO_31);
+				audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) (output * TWO_TO_31 * 0.5f * outputLevel);
 			}
 		}
 	}
@@ -461,7 +481,7 @@ void audioFrame(uint16_t buffer_offset)
 		for (int cc=0; cc < numSamples; cc++)
 		{
 			sample = 0.0f;
-			input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31);
+			input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31) * inputLevel;
 
 			newFeedback = interpolateFeedback(adcVals[0]);
 			tRampSetDest(rampFeedback, newFeedback);
@@ -469,9 +489,9 @@ void audioFrame(uint16_t buffer_offset)
 			newDelay = interpolateDelayControl(TWO_TO_16 - adcVals[1]);
 			tRampSetDest(rampDelayFreq, newDelay);
 
-			lpFreq = ((adcVals[2] * INV_TWO_TO_16) * 19980.0f) + 20.0f;
+			lpFreq = ((adcVals[2] * INV_TWO_TO_16) * 20000.0f);
 			if (lpFreq < hpFreq) lpFreq = hpFreq;
-			hpFreq = ((adcVals[3] * INV_TWO_TO_16) * 19980.0f) + 20.0f;
+			hpFreq = ((adcVals[3] * INV_TWO_TO_16) * 10000.0f) - 100.0f;
 			if (hpFreq > lpFreq) hpFreq = lpFreq;
 
 			tSVFSetFreq(lowpass, lpFreq);
@@ -488,14 +508,20 @@ void audioFrame(uint16_t buffer_offset)
 
 			delayFeedbackSamp = output;
 
-			audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) (output * TWO_TO_31);
+			output += input;
+
+			audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) (output * TWO_TO_31 * outputLevel);
 		}
 	}
 	else if (mode == BitcrusherMode)
 	{
 		for (int cc=0; cc < numSamples; cc++)
 		{
-			int samp = audioInBuffer[buffer_offset+(cc*2)];
+			sample = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31) * inputLevel;
+
+			int samp = (int32_t) (sample * TWO_TO_31);
+
+			bitDepth = (int) ((adcVals[0] * INV_TWO_TO_16 * 16.0f) + 1);
 
 			int twoToCrush = (int) exp2f(32 - bitDepth);
 
@@ -514,7 +540,9 @@ void audioFrame(uint16_t buffer_offset)
 				sampCount = 0;
 			}
 
-			audioOutBuffer[buffer_offset + (cc*2)] = lastSamp;
+			output = (float) (lastSamp * INV_TWO_TO_31);
+
+			audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) (output * TWO_TO_31 * outputLevel);
 		}
 	}
 	else if (mode == DrumboxMode)
@@ -522,7 +550,7 @@ void audioFrame(uint16_t buffer_offset)
 		for (int cc=0; cc < numSamples; cc++)
 		{
 			sample = 0.0f;
-			float audioIn = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31);
+			float audioIn = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31)  * inputLevel;
 
 			newFeedback = interpolateFeedback(adcVals[1]);
 			tRampSetDest(rampFeedback, newFeedback);
@@ -530,7 +558,7 @@ void audioFrame(uint16_t buffer_offset)
 			newDelay = interpolateDelayControl(TWO_TO_16 - adcVals[2]);
 			tRampSetDest(rampDelayFreq, newDelay);
 
-			newFreq =  ((adcVals[1] * INV_TWO_TO_16) * 4.0f ) * ((1.0f / newDelay) * 48000.0f);
+			newFreq =  ((adcVals[1] * INV_TWO_TO_16) * 4.0f) * ((1.0f / newDelay) * 48000.0f);
 			tRampSetDest(rampSineFreq,newFreq);
 
 			tEnvelopeFollowerDecayCoeff(envFollowSine,decayCoeffTable[(adcVals[3] >> 4)]);
@@ -550,7 +578,59 @@ void audioFrame(uint16_t buffer_offset)
 			sample = tHighpassTick(highpass1, sample);
 			sample = OOPS_shaper(sample * 0.6, 1.0f);
 
-			audioOutBuffer[buffer_offset + (cc*2)]  = (int32_t) (sample * TWO_TO_31);
+			audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) (sample * TWO_TO_31 * outputLevel);
+		}
+	}
+	else if (mode == SynthMode)
+	{
+		lpFreq = ((adcVals[1] * INV_TWO_TO_16) * 20000.0f);
+		tSVFSetFreq(lowpass, lpFreq);
+		detuneMax = (adcVals[0] * INV_TWO_TO_16) * 10.0f;
+		for (int i = 0; i < activeVoices; i++)
+		{
+			freq[i] = OOPS_midiToFrequency(tMPoly_getPitch(mpoly, i));
+			for (int j = 0; j < NUM_OSC; j++)
+			{
+				detuneAmounts[i][j] = (detuneSeeds[i][j] * detuneMax) - (detuneMax * 0.5f);
+				tSawtoothSetFreq(saw[i][j], freq[i] + detuneAmounts[i][j]);
+			}
+		}
+		for (int cc=0; cc < numSamples; cc++)
+		{
+			tMPoly_tick(mpoly);
+
+			//input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31)  * inputLevel;
+
+			sample = 0.0f;
+			output = 0.0f;
+
+			for (int i = 0; i < activeVoices; i++)
+			{
+				for (int j = 0; j < NUM_OSC; j++)
+				{
+					sample += tSawtoothTick(saw[i][j]) * tRampTick(ramp[i]);
+				}
+			}
+
+			//sample = tTalkboxTick(vocoder, sample, input);
+
+			sample = tSVFTick(lowpass, sample) * INV_NUM_OSC;
+
+			output = tanhf(sample);
+			audioOutBuffer[buffer_offset + (cc*2)]  = (int32_t) (output * TWO_TO_31 * outputLevel);
+		}
+	}
+	else if (mode == LevelMode)
+	{
+		for (int cc=0; cc < numSamples; cc++)
+		{
+			if (levelLock == 0)
+			{
+				inputLevel = (adcVals[3] * INV_TWO_TO_16) * 3.0f;
+				outputLevel = (adcVals[2] * INV_TWO_TO_16) * 3.0f / inputLevel;
+			}
+			sample = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31)  * inputLevel;
+			audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) (sample * TWO_TO_31 * outputLevel);
 		}
 	}
 }
@@ -618,7 +698,8 @@ float interpolateFeedback(float raw_data)
 static void writeModeToLCD(VocodecMode in, UpDownMode ud)
 {
 	int i = in;
-	if (formantCorrect > 0) i += ModeCount;
+	if ((formantCorrect > 0) && (in != LevelMode)) i += ModeCount;
+	else if (levelLock && (in == LevelMode)) i += ModeCount;
 	OLEDwriteLine(modeNames[i], 10, FirstLine);
 	OLEDwriteLine("          ", 10, SecondLine);
 	if (in == AutotuneMode)
@@ -633,7 +714,7 @@ static void writeModeToLCD(VocodecMode in, UpDownMode ud)
 		}
 		else OLEDwriteLine("          ", 10, SecondLine);
 	}
-	else if (in == VocoderMode)
+	else if (in == VocoderMode || in == SynthMode)
 	{
 		OLEDwriteIntLine(activeVoices, 2, SecondLine);
 	}
@@ -688,15 +769,11 @@ void buttonWasPressed(VocodecButton button)
 					//else activeShifters = NUM_SHIFTERS;
 				}
 			}
-			else if (mode == VocoderMode)
+			else if (mode == VocoderMode || mode == SynthMode)
 			{
 				if (activeVoices < NUM_VOICES) activeVoices++;
 				else activeVoices = 1;
 				//else activeVoices = NUM_VOICES;
-			}
-			else if (mode == BitcrusherMode)
-			{
-				if (bitDepth < MAX_DEPTH) bitDepth++;
 			}
 		}
 	}
@@ -718,15 +795,11 @@ void buttonWasPressed(VocodecButton button)
 					//else activeShifters = 1;
 				}
 			}
-			else if (mode == VocoderMode)
+			else if (mode == VocoderMode || mode == SynthMode)
 			{
 				if (activeVoices > 1) activeVoices--;
 				else activeVoices = NUM_VOICES;
 				//else activeVoices = 1;
-			}
-			else if (mode == BitcrusherMode)
-			{
-				if (bitDepth > 1) bitDepth--;
 			}
 		}
 	}
@@ -751,6 +824,10 @@ void buttonWasPressed(VocodecButton button)
 				if (upDownMode == ModeChange) atType = NearestType;
 				else formantCorrect = (formantCorrect > 0) ? 0 : 1;
 			}
+		}
+		else if (mode == LevelMode)
+		{
+			levelLock = (levelLock == 0) ? 1 : 0;
 		}
 	}
 	else if (button == ButtonB)
@@ -790,11 +867,7 @@ void buttonWasPressed(VocodecButton button)
 					upDownMode = ParameterChange;
 				}
 			}
-			else if (mode == VocoderMode)
-			{
-				upDownMode = ParameterChange;
-			}
-			else if (mode == BitcrusherMode)
+			else if (mode == VocoderMode || mode == SynthMode)
 			{
 				upDownMode = ParameterChange;
 			}
@@ -805,7 +878,7 @@ void buttonWasPressed(VocodecButton button)
 	mode = (VocodecMode) modex;
 
 	if (mode == AutotuneMode) tMPoly_setNumVoices(mpoly, activeShifters);
-	if (mode == VocoderMode) tMPoly_setNumVoices(mpoly, activeVoices);
+	if (mode == VocoderMode || mode == SynthMode) tMPoly_setNumVoices(mpoly, activeVoices);
 
 	writeModeToLCD(mode, upDownMode);
 }

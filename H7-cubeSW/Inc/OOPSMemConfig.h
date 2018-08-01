@@ -22,9 +22,11 @@
 #define NUM_VOICES 8
 #define NUM_SHIFTERS 6
 #define MPOLY_NUM_MAX_VOICES 8
+#define NUM_OSC 3
+#define INV_NUM_OSC (1.0f / NUM_OSC)
 #define PS_FRAME_SIZE 1024 // SNAC_FRAME_SIZE in OOPSCore.h should match (or be smaller than?) this
-#define ENV_WINDOW_SIZE 64 // 1024
-#define ENV_HOP_SIZE 64 //256
+#define ENV_WINDOW_SIZE 1024
+#define ENV_HOP_SIZE 256
 
 #define SHAPER1_TABLE_SIZE 65536
 extern const float shaper1[SHAPER1_TABLE_SIZE];
@@ -47,7 +49,7 @@ extern const float shaper1[SHAPER1_TABLE_SIZE];
 #define     N_NEURON             0
 #define     N_PHASOR             0
 #define     N_CYCLE              1
-#define     N_SAWTOOTH           NUM_VOICES
+#define     N_SAWTOOTH           NUM_VOICES * (NUM_OSC + 1)
 #define     N_TRIANGLE           0
 #define     N_SQUARE             0
 #define     N_NOISE              1 + (1 * N_STIFKARP) + (1 * N_PLUCK) // StifKarp and Pluck each contain 1 Noise component.

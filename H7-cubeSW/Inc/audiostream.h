@@ -152,6 +152,8 @@ typedef enum VocodecMode
 	DelayMode,
 	BitcrusherMode,
 	DrumboxMode,
+	SynthMode,
+	LevelMode,
 	ModeCount,
 	ModeNil
 } VocodecMode;
@@ -166,7 +168,14 @@ typedef enum AutotuneType
 extern VocodecMode mode;
 extern AutotuneType atType;
 extern int activeShifters;
+
+extern int bitDepth;
 extern int rateRatio;
+
+extern float inputLevel;
+extern float outputLevel;
+
+extern float lpFreq;
 
 void buttonWasPressed(VocodecButton button);
 void buttonWasReleased(VocodecButton button);
