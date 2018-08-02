@@ -13,9 +13,19 @@ typedef enum _OLEDLine
 	NilLine
 } OLEDLine;
 
-void OLEDwriteString(uint8_t* myCharArray, uint8_t arrayLength, uint8_t startCursor, OLEDLine line);
+void OLEDdrawPoint(int16_t x, int16_t y, uint16_t color);
 
-void OLEDwriteLine(uint8_t* myCharArray, uint8_t arrayLength, OLEDLine line);
+void OLEDdrawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color);
+
+void OLEDdrawCircle(int16_t x0, int16_t y0, int16_t r, uint16_t color);
+
+void OLEDclear();
+
+void OLEDclearLine(OLEDLine line);
+
+void OLEDwriteString(char* myCharArray, uint8_t arrayLength, uint8_t startCursor, OLEDLine line);
+
+void OLEDwriteLine(char* myCharArray, uint8_t arrayLength, OLEDLine line);
 
 void OLEDwriteInt(uint32_t myNumber, uint8_t numDigits, uint8_t startCursor, OLEDLine line);
 

@@ -6,7 +6,39 @@
 
 
 GFX theGFX;
-void OLEDwriteString(uint8_t* myCharArray, uint8_t arrayLength, uint8_t startCursor, OLEDLine line)
+
+void OLEDdrawPoint(int16_t x, int16_t y, uint16_t color)
+{
+	GFXwritePixel(&theGFX, x, y, color);
+	ssd1306_display_full_buffer();
+}
+
+void OLEDdrawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color)
+{
+	GFXwriteLine(&theGFX, x0, y0, x1, y1, color);
+	ssd1306_display_full_buffer();
+}
+
+void OLEDdrawCircle(int16_t x0, int16_t y0, int16_t r, uint16_t color)
+{
+	GFXfillCircle(&theGFX, x0, y0, r, color);
+	ssd1306_display_full_buffer();
+}
+
+
+void OLEDclear()
+{
+	GFXfillRect(&theGFX, 0, 0, 128, 32, 0);
+	ssd1306_display_full_buffer();
+}
+
+void OLEDclearLine(OLEDLine line)
+{
+	GFXfillRect(&theGFX, 0, (line%2)*16, 128, 16*((line/2)+1), 0);
+	ssd1306_display_full_buffer();
+}
+
+void OLEDwriteString(char* myCharArray, uint8_t arrayLength, uint8_t startCursor, OLEDLine line)
 {
 	uint8_t cursorX = startCursor;
 	uint8_t cursorY = 15 + (16 * (line%2));
@@ -20,7 +52,7 @@ void OLEDwriteString(uint8_t* myCharArray, uint8_t arrayLength, uint8_t startCur
 	ssd1306_display_full_buffer();
 }
 
-void OLEDwriteLine(uint8_t* myCharArray, uint8_t arrayLength, OLEDLine line)
+void OLEDwriteLine(char* myCharArray, uint8_t arrayLength, OLEDLine line)
 {
 	if (line == FirstLine)
 	{

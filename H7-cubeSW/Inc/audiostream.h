@@ -32,6 +32,7 @@
 #include "stm32h7xx_hal.h"
 #include "gfx.h"
 #include "ui.h"
+#include "sfx.h"
 
 #include "OOPS.h"
 
@@ -45,18 +46,8 @@ uint8_t buttonValuesPrev[NUM_BUTTONS];
 uint32_t buttonCounters[NUM_BUTTONS];
 uint32_t buttonPressed[NUM_BUTTONS];
 
-extern int chordArray[12];
 extern GFX theGFX;
-extern float testFreq;
-extern uint8_t buttonAPressed;
-extern uint8_t doAudio;
-extern float myVol;
 extern int32_t audioOutBuffer[AUDIO_BUFFER_SIZE];
-extern float noteperiod;
-extern float pitchFactor;
-extern float formantKnob;
-extern float newFeedback;
-extern float newDelay;
 
 // MIDI FUNCTIONS
 void noteOn(int key, int velocity);
@@ -148,38 +139,34 @@ typedef enum VocodecMode
 	VocoderMode=0,
 	FormantShiftMode,
 	PitchShiftMode,
-	AutotuneMode,
+	AutotuneNearestMode,
+	AutotuneAbsoluteMode,
 	DelayMode,
 	BitcrusherMode,
 	DrumboxMode,
 	SynthMode,
+	DrawMode,
 	LevelMode,
 	ModeCount,
 	ModeNil
 } VocodecMode;
 
-typedef enum AutotuneType
-{
-	NearestType = 0,
-	AbsoluteType,
-	AutotuneTypeNil
-} AutotuneType;
-
 extern VocodecMode mode;
-extern AutotuneType atType;
+
+extern int activeVoices;
 extern int activeShifters;
 
-extern int bitDepth;
-extern int rateRatio;
+extern uint8_t autotuneLock;
 
-extern float inputLevel;
-extern float outputLevel;
-
-extern float lpFreq;
+extern uint8_t xPos;
+extern uint8_t yPos;
+extern uint8_t penWeight;
+extern uint8_t penColor;
 
 void buttonWasPressed(VocodecButton button);
 void buttonWasReleased(VocodecButton button);
 
+extern uint16_t* adcVals;
 extern uint16_t knobValue;
 extern int knobMoved;
 extern int calibrated;

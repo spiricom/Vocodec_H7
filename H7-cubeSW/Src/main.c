@@ -68,6 +68,7 @@
 #include "custom_fonts.h"
 #include "gfx.h"
 #include "ui.h"
+#include "sfx.h"
 
 
 // FOR BEST SPEED
@@ -94,8 +95,6 @@ uint16_t myADC[NUM_ADC_CHANNELS] __ATTR_RAM_D2;
 
 uint32_t counter = 0;
 int pinValue = 0;
-
-
 
 uint8_t ball[]  = {0x00, 0x3C, 0x7E, 0x7E, 0x7E, 0x7E, 0x3C, 0x00};
 static unsigned char testblock[] = {0x00, 0x7C, 0x7E, 0x0B, 0x0B, 0x7E, 0x7C, 0x00};
@@ -307,10 +306,14 @@ int main(void)
 			  OLEDwriteInt(rateRatio, 3, 4, SecondLine);
 			  OLEDwriteInt(bitDepth, 3, 76, SecondLine);
 		  }
+		  else if (mode == DrawMode)
+		  {
+			  OLEDdrawCircle(xPos, yPos, penWeight, penColor);
+		  }
 		  else if (mode == LevelMode)
 		  {
-			  OLEDwriteFixedFloat(inputLevel, 4, 3, 4, SecondLine);
-			  OLEDwriteFixedFloat(outputLevel*inputLevel, 4, 3, 76, SecondLine);
+			  OLEDwriteFixedFloat(inputLevel, 3, 2, 4, SecondLine);
+			  OLEDwriteFixedFloat(outputLevel*inputLevel, 3, 2, 76, SecondLine);
 		  }
 		  buttonCheck(); // should happen here, not frame, or else interrupts audio processing
 		  counter = 0;
