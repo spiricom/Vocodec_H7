@@ -69,7 +69,9 @@
 /* USER CODE BEGIN Private defines */
 //#define SAMPLERATE96K
 
+
 #define __ATTR_RAM_D2	__attribute__ ((section(".RAM_D2"))) __attribute__ ((aligned (32)))
+#define __ATTR_RAM_D3	__attribute__ ((section(".RAM_D3"))) __attribute__ ((aligned (32)))
 
 
 float randomNumber(void);
