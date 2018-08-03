@@ -285,6 +285,8 @@ int main(void)
 
 	  if (counter >= 400)
 	  {
+		  processKnobs();
+
 		  if (mode == FormantShiftMode)
 		  {
 			  GFXfillRect(&theGFX, 0, 16, 128, 16, 0);

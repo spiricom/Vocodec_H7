@@ -3,6 +3,7 @@
 #include "main.h"
 #include "codec.h"
 #include "OOPSWavetables.h"
+#include "ui.h"
 
 #define NUM_FB_DELAY_TABLES 8
 
@@ -155,7 +156,7 @@ void SFXInit(float sr, int blocksize)
 void SFXVocoderFrame()
 {
 	tMPoly_setNumVoices(mpoly, activeVoices);
-	lpFreq = ((adcVals[1] * INV_TWO_TO_16) * 20000.0f);
+	lpFreq = ((knobVals[2]) * 20000.0f);
 	tSVFSetFreq(lowpass, lpFreq);
 	for (int i = 0; i < tMPoly_getNumVoices(mpoly); i++)
 	{
@@ -187,7 +188,7 @@ int32_t SFXVocoderTick(int32_t input)
 
 void SFXFormantFrame()
 {
-	formantKnob = adcVals[1] * INV_TWO_TO_16;
+	formantKnob = knobVals[2];
 	formantShiftFactor = (formantKnob * 2.0f) - 1.0f;
 }
 int32_t SFXFormantTick(int32_t input)
@@ -205,9 +206,9 @@ int32_t SFXFormantTick(int32_t input)
 void SFXPitchShiftFrame()
 {
 	//pitchFactor = (adcVals[1] * INV_TWO_TO_16) * 3.55f + 0.45f; //knob values
-	pitchFactor = (adcVals[4] * INV_TWO_TO_16) * 4.49f + 0.43f; //pedal values
+	pitchFactor = (knobVals[0]) * 4.49f + 0.43f; //pedal values
 	tPitchShift_setPitchFactor(pshift[0], pitchFactor);
-	formantKnob = adcVals[3] * INV_TWO_TO_16;
+	formantKnob = knobVals[1];
 	formantShiftFactor = (formantKnob * 2.0f) - 1.0f;
 }
 
@@ -283,15 +284,15 @@ int32_t SFXAutotuneAbsoluteTick(int32_t input)
 
 void SFXDelayFrame()
 {
-	newFeedback = interpolateFeedback(adcVals[0]);
+	newFeedback = interpolateFeedback(knobVals[3]);
 	tRampSetDest(rampFeedback, newFeedback);
 
-	newDelay = interpolateDelayControl(TWO_TO_16 - adcVals[1]);
+	newDelay = interpolateDelayControl(TWO_TO_16 - knobVals[2]);
 	tRampSetDest(rampDelayFreq, newDelay);
 
-	lpFreq = ((adcVals[2] * INV_TWO_TO_16) * 20000.0f);
+	lpFreq = ((knobVals[1]) * 20000.0f);
 	if (lpFreq < hpFreq) lpFreq = hpFreq;
-	hpFreq = ((adcVals[3] * INV_TWO_TO_16) * 10000.0f) - 100.0f;
+	hpFreq = ((knobVals[0]) * 10000.0f) - 100.0f;
 	if (hpFreq > lpFreq) hpFreq = lpFreq;
 
 	tSVFSetFreq(lowpass, lpFreq);
@@ -323,8 +324,8 @@ int32_t SFXDelayTick(int32_t input)
 
 void SFXBitcrusherFrame()
 {
-	bitDepth = (int) ((adcVals[0] * INV_TWO_TO_16 * 16.0f) + 1);
-	rateRatio = (int) (((adcVals[1] * INV_TWO_TO_16) - 0.015) * 129) + 1; // 1 - 128 range, need to use weird value
+	bitDepth = (int) ((knobVals[3] * 16.0f) + 1);
+	rateRatio = (int) (((knobVals[2]) - 0.015) * 129) + 1; // 1 - 128 range, need to use weird value
 }
 int32_t SFXBitcrusherTick(int32_t input)
 {
@@ -356,13 +357,13 @@ int32_t SFXBitcrusherTick(int32_t input)
 
 void SFXDrumboxFrame()
 {
-	newFeedback = interpolateFeedback(adcVals[1]);
+	newFeedback = interpolateFeedback(knobVals[2]);
 	tRampSetDest(rampFeedback, newFeedback);
 
-	newDelay = interpolateDelayControl(TWO_TO_16 - adcVals[2]);
+	newDelay = interpolateDelayControl(TWO_TO_16 - knobVals[1]);
 	tRampSetDest(rampDelayFreq, newDelay);
 
-	newFreq =  ((adcVals[1] * INV_TWO_TO_16) * 4.0f) * ((1.0f / newDelay) * 48000.0f);
+	newFreq =  ((knobVals[2]) * 4.0f) * ((1.0f / newDelay) * 48000.0f);
 	tRampSetDest(rampSineFreq,newFreq);
 
 	tEnvelopeFollowerDecayCoeff(envFollowSine,decayCoeffTable[(adcVals[3] >> 4)]);
@@ -396,13 +397,13 @@ int32_t SFXDrumboxTick(int32_t input)
 void SFXSynthFrame()
 {
 	tMPoly_setNumVoices(mpoly, activeVoices);
-	lpFreq = ((adcVals[1] * INV_TWO_TO_16) * 20000.0f);
+	lpFreq = ((knobVals[2]) * 20000.0f);
 	tSVFSetFreq(lowpass, lpFreq);
 
 	for (int i = 0; i < tMPoly_getNumVoices(mpoly); i++)
 	{
 		calculateFreq(i);
-		detuneMax = (adcVals[0] * INV_TWO_TO_16) * freq[i] * 0.05f;
+		detuneMax = (knobVals[3]) * freq[i] * 0.05f;
 		for (int j = 0; j < NUM_OSC; j++)
 		{
 			detuneAmounts[i][j] = (detuneSeeds[i][j] * detuneMax) - (detuneMax * 0.5f);
@@ -440,8 +441,8 @@ void SFXLevelFrame()
 {
 	if (levelLock == 0)
 	{
-		inputLevel = (adcVals[3] * INV_TWO_TO_16) * 3.0f;
-		outputLevel = (adcVals[2] * INV_TWO_TO_16) * 3.0f / inputLevel;
+		inputLevel = (knobVals[2]) * 3.0f;
+		outputLevel = (knobVals[3]) * 3.0f / inputLevel;
 	}
 }
 int32_t SFXLevelTick(int32_t input)
@@ -540,7 +541,7 @@ float ksTick(float noise_in)
 
 float interpolateDelayControl(float raw_data)
 {
-	float scaled_raw = raw_data * INV_TWO_TO_16;
+	float scaled_raw = raw_data;
 	if (scaled_raw < 0.2f)
 	{
 		return (DelayLookup[0] + ((DelayLookup[1] - DelayLookup[0]) * (scaled_raw * 5.f)));
@@ -557,7 +558,7 @@ float interpolateDelayControl(float raw_data)
 
 float interpolateFeedback(float raw_data)
 {
-	float scaled_raw = raw_data * INV_TWO_TO_16;
+	float scaled_raw = raw_data;
 	if (scaled_raw < 0.2f)
 	{
 		return (FeedbackLookup[0] + ((FeedbackLookup[1] - FeedbackLookup[0]) * ((scaled_raw) * 5.0f)));

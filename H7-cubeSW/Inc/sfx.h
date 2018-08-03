@@ -13,6 +13,7 @@
 #include "stm32h7xx_hal.h"
 #include "audiostream.h"
 
+
 /* Externs -------------------------------------------------------------------*/
 
 extern int lockArray[12];

@@ -27,6 +27,7 @@
 #define PS_FRAME_SIZE 1024 // SNAC_FRAME_SIZE in OOPSCore.h should match (or be smaller than?) this
 #define ENV_WINDOW_SIZE 1024
 #define ENV_HOP_SIZE 256
+#define NUM_KNOBS 4
 
 #define SHAPER1_TABLE_SIZE 65536
 extern const float shaper1[SHAPER1_TABLE_SIZE];
@@ -78,7 +79,7 @@ extern const float shaper1[SHAPER1_TABLE_SIZE];
 #define     N_SOLAD              0 + (1 * N_PITCHSHIFTER) + (1 * N_PITCHSHIFT)
 #define     N_SNAC               0 + (1 * N_PITCHSHIFTER) + (1 * N_PERIOD)
 #define     N_ATKDTK             0
-#define     N_RAMP               5 + MPOLY_NUM_MAX_VOICES + (N_MPOLY * MPOLY_NUM_MAX_VOICES)
+#define     N_RAMP               5 + MPOLY_NUM_MAX_VOICES + (N_MPOLY * MPOLY_NUM_MAX_VOICES) + NUM_KNOBS
 #define     N_LOCKHARTWAVEFOLDER 0
 #define     N_FORMANTSHIFTER     1
 

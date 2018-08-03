@@ -46,10 +46,12 @@ typedef enum VocodecMode
 extern VocodecMode mode;
 extern LCDModeType lcdMode;
 
+
 uint8_t oled_buffer[32];
 
 
 #define NUM_BUTTONS 16
+#define NUM_KNOBS 4
 uint8_t buttonValues[NUM_BUTTONS];
 uint8_t buttonValuesPrev[NUM_BUTTONS];
 uint32_t buttonCounters[NUM_BUTTONS];
@@ -58,6 +60,7 @@ uint32_t buttonPressed[NUM_BUTTONS];
 extern GFX theGFX;
 
 extern uint16_t* adcVals;
+extern float knobVals[NUM_KNOBS];
 
 typedef enum _OLEDLine
 {

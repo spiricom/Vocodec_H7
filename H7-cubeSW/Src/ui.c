@@ -6,6 +6,7 @@
 
 GFX theGFX;
 uint16_t* adcVals;
+float knobVals[NUM_KNOBS];
 
 char* modeNames[ModeCount*2];
 static void initModeNames();
@@ -19,6 +20,9 @@ uint8_t yPos;
 uint8_t penWeight;
 uint8_t penColor = 1;
 
+tRamp* knobRamps[NUM_KNOBS];
+float lastval[NUM_KNOBS];
+
 UpDownMode upDownMode = ModeChange;
 VocodecMode mode = DrawMode;
 
@@ -29,6 +33,12 @@ void UIInit(uint16_t* myADCArray)
 	adcVals = myADCArray;
 
 	writeModeToLCD(mode, upDownMode);
+	for(int i = 0; i < NUM_KNOBS; i++)
+	{
+		knobRamps[i] = tRampInit(0.05f, 1);
+		lastval[i] = 0.0f;
+	}
+
 }
 
 void UIDrawFrame(void)
@@ -76,7 +86,25 @@ void buttonCheck(void)
 
 void processKnobs(void)
 {
-
+	float val;
+	for(int i = 0; i < NUM_KNOBS; ++i)
+	{
+		val = (int)(adcVals[(NUM_KNOBS-1)-i] * 0.00390625);
+		if((int)val % 10 < 5)
+		{
+			val = (int)(val/10.0f);
+			val = val/25.5f;
+			tRampSetDest(knobRamps[i], val);
+		}
+		else
+		{
+			val = (int)((val+10)/10.0f);
+			val = val/25.5f;
+			tRampSetDest(knobRamps[i], val);
+		}
+		val = tRampTick(knobRamps[i]);
+		knobVals[i] = val;
+	}
 }
 
 #define ASCII_NUM_OFFSET 48
