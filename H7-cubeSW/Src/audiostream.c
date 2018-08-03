@@ -385,7 +385,7 @@ void audioFrame(uint16_t buffer_offset)
 
 			newDelay = interpolateDelayControl(TWO_TO_16 - adcVals[2]);
 			tRampSetDest(rampDelayFreq,newDelay);
-			newFreq =  ((adcVals[1] * INV_TWO_TO_16) * 4.0f ) * ((1.0f / newDelay) * 48000.0f);
+			newFreq =  ((adcVals[1] * INV_TWO_TO_16) * 8.0f ) * ((1.0f / newDelay) * 48000.0f);
 			tRampSetDest(rampSineFreq,newFreq);
 
 			//tEnvelopeFollowerDecayCoeff(envFollowNoise,adcVals[3] >> 4);
@@ -404,15 +404,16 @@ void audioFrame(uint16_t buffer_offset)
 			//tEnvelopeFollowerAttackThresh(envFollowSine,newAttackThresh);
 
 			sample = ((ksTick(audioIn) * 0.7f) + audioIn * 0.8f);
-			float tempSinSample = OOPS_shaper(((tCycleTick(sin1) * tEnvelopeFollowerTick(envFollowSine, audioIn)) * 0.6f), 0.5f);
+			//float tempSinSample = OOPS_shaper(((tCycleTick(sin1) * tEnvelopeFollowerTick(envFollowSine, audioIn)) * 0.5f), 0.5f);
+			float tempSinSample = tCycleTick(sin1) * tEnvelopeFollowerTick(envFollowSine, audioIn);
 			sample += tempSinSample * 0.6f;
 			sample += (tNoiseTick(noise1) * tEnvelopeFollowerTick(envFollowNoise, audioIn));
 
 
-			sample *= gainBoost;
+			//sample *= gainBoost;
 
 			sample = tHighpassTick(highpass1, sample);
-			sample = OOPS_shaper(sample * 0.6, 1.0f);
+			//sample = OOPS_shaper(sample * 0.5, 1.0f);
 			//update Parameters
 			/*
 			smoothedParams[ControlParameterFeedback] = rampFeedback.tick(&rampFeedback);
