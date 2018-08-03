@@ -270,7 +270,8 @@ int main(void)
 		Error_Handler();
 
 	}
-	audioInit(&hi2c2, &hsai_BlockA1, &hsai_BlockB1, &hrng, ((uint16_t*)&myADC));
+	audioInit(&hi2c2, &hsai_BlockA1, &hsai_BlockB1, &hrng);
+	UIInit(((uint16_t*)&myADC));
 	
 
   /* USER CODE END 2 */
@@ -308,7 +309,7 @@ int main(void)
 		  }
 		  else if (mode == DrawMode)
 		  {
-			  OLEDdrawCircle(xPos, yPos, penWeight, penColor);
+			  UIDrawFrame();
 		  }
 		  else if (mode == LevelMode)
 		  {

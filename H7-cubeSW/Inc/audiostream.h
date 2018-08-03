@@ -31,22 +31,14 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm32h7xx_hal.h"
 #include "gfx.h"
-#include "ui.h"
 #include "sfx.h"
-
+#include "ui.h"
 #include "OOPS.h"
 
 #define AUDIO_FRAME_SIZE      196
 #define HALF_BUFFER_SIZE      AUDIO_FRAME_SIZE * 2 //number of samples per half of the "double-buffer" (twice the audio frame size because there are interleaved samples for both left and right channels)
 #define AUDIO_BUFFER_SIZE     AUDIO_FRAME_SIZE * 4 //number of samples in the whole data structure (four times the audio frame size because of stereo and also double-buffering/ping-ponging)
 
-#define NUM_BUTTONS 16
-uint8_t buttonValues[NUM_BUTTONS];
-uint8_t buttonValuesPrev[NUM_BUTTONS];
-uint32_t buttonCounters[NUM_BUTTONS];
-uint32_t buttonPressed[NUM_BUTTONS];
-
-extern GFX theGFX;
 extern int32_t audioOutBuffer[AUDIO_BUFFER_SIZE];
 
 // MIDI FUNCTIONS
@@ -61,7 +53,6 @@ typedef enum
   BUFFER_OFFSET_HALF,  
   BUFFER_OFFSET_FULL,     
 }BUFFER_StateTypeDef;
-
 
 void slideValueChanged(uint16_t value);
 
@@ -110,71 +101,15 @@ extern float mPerVal;
 #define SAMPLE_RATE_DIV_PARAMS_MS (SAMPLE_RATE_DIV_PARAMS / 1000.f)
 #define INV_SR_DIV_PARAMS_MS 1.f/SAMPLE_RATE_DIV_PARAMS_MS
 
-typedef enum LCDModeType
-{
-	LCDModeDisplayPitchClass = 0,
-	LCDModeDisplayPitchMidi,
-	LCDModeTypeNil,
-	LCDModeCount = LCDModeTypeNil
-} LCDModeType;
-
-typedef enum VocodecButton
-{
-	ButtonA = 0,
-	ButtonB,
-	ButtonUp,
-	ButtonDown,
-	ButtonNil
-} VocodecButton;
-
-typedef enum UpDownMode
-{
-	ModeChange = 0,
-	ParameterChange,
-	NilChange
-} UpDownMode;
-
-typedef enum VocodecMode
-{
-	VocoderMode=0,
-	FormantShiftMode,
-	PitchShiftMode,
-	AutotuneNearestMode,
-	AutotuneAbsoluteMode,
-	DelayMode,
-	BitcrusherMode,
-	DrumboxMode,
-	SynthMode,
-	DrawMode,
-	LevelMode,
-	ModeCount,
-	ModeNil
-} VocodecMode;
-
-extern VocodecMode mode;
-
-extern int activeVoices;
-extern int activeShifters;
-
-extern uint8_t autotuneLock;
-
-extern uint8_t xPos;
-extern uint8_t yPos;
-extern uint8_t penWeight;
-extern uint8_t penColor;
-
-void buttonWasPressed(VocodecButton button);
-void buttonWasReleased(VocodecButton button);
-
-extern uint16_t* adcVals;
 extern uint16_t knobValue;
 extern int knobMoved;
 extern int calibrated;
-extern LCDModeType lcdMode;
+extern int activeVoices;
+extern int activeShifters;
 
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
-void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTypeDef* hsaiIn, RNG_HandleTypeDef* hrandom, uint16_t* myADCArray);
+void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTypeDef* hsaiIn, RNG_HandleTypeDef* hrandom);
 
 void audioFrame(uint16_t buffer_offset);
 

@@ -15,7 +15,6 @@
 
 /* Externs -------------------------------------------------------------------*/
 
-extern tMPoly* mpoly;
 extern int lockArray[12];
 extern int chordArray[12];
 extern float noteperiod;
@@ -28,38 +27,42 @@ extern int rateRatio;
 extern float inputLevel;
 extern float outputLevel;
 
-void SFXInit(float sr, int blocksize, uint16_t* myADCArray);
+extern uint8_t autotuneLock;
+extern uint8_t levelLock;
+extern uint8_t formantCorrect;
+
+void SFXInit(float sr, int blocksize);
 
 // Using dummy arguments so they can be put into a function pointer array
-void VocoderFrame(uint8_t _a);
-int32_t VocoderTick(int32_t input, uint8_t _a, uint8_t _b);
+void SFXVocoderFrame();
+int32_t SFXVocoderTick(int32_t input);
 
-void FormantFrame(uint8_t _a);
-int32_t FormantTick(int32_t input, uint8_t _a, uint8_t _b);
+void SFXFormantFrame();
+int32_t SFXFormantTick(int32_t input);
 
-void PitchShiftFrame(uint8_t _a);
-int32_t PitchShiftTick(int32_t input, uint8_t fCorr, uint8_t _b);
+void SFXPitchShiftFrame();
+int32_t SFXPitchShiftTick(int32_t input);
 
-void AutotuneNearestFrame(uint8_t _a);
-int32_t AutotuneNearestTick(int32_t input, uint8_t fCorr, uint8_t lock);
+void SFXAutotuneNearestFrame();
+int32_t SFXAutotuneNearestTick(int32_t input);
 
-void AutotuneAbsoluteFrame(uint8_t _a);
-int32_t AutotuneAbsoluteTick(int32_t input, uint8_t fCorr, uint8_t _b);
+void SFXAutotuneAbsoluteFrame();
+int32_t SFXAutotuneAbsoluteTick(int32_t input);
 
-void DelayFrame(uint8_t _a);
-int32_t DelayTick(int32_t input, uint8_t _a, uint8_t _b);
+void SFXDelayFrame();
+int32_t SFXDelayTick(int32_t input);
 
-void BitcrusherFrame(uint8_t _a);
-int32_t BitcrusherTick(int32_t input, uint8_t _a, uint8_t _b);
+void SFXBitcrusherFrame();
+int32_t SFXBitcrusherTick(int32_t input);
 
-void DrumboxFrame(uint8_t _a);
-int32_t DrumboxTick(int32_t input, uint8_t _a, uint8_t _b);
+void SFXDrumboxFrame();
+int32_t SFXDrumboxTick(int32_t input);
 
-void SynthFrame(uint8_t _a);
-int32_t SynthTick(int32_t input, uint8_t _a, uint8_t _b);
+void SFXSynthFrame();
+int32_t SFXSynthTick(int32_t input);
 
-void LevelFrame(uint8_t lock);
-int32_t LevelTick(int32_t input, uint8_t _a, uint8_t _b);
+void SFXLevelFrame();
+int32_t SFXLevelTick(int32_t input);
 
 void SFXNoteOn(int key, int velocity);
 void SFXNoteOff(int key, int velocity);
