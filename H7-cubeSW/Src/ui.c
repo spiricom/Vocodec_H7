@@ -24,10 +24,12 @@ tRamp* knobRamps[NUM_KNOBS];
 float lastval[NUM_KNOBS];
 
 UpDownMode upDownMode = ModeChange;
-VocodecMode mode = DrawMode;
+VocodecMode mode = VocoderMode;
 
 void UIInit(uint16_t* myADCArray)
 {
+	float val;
+
 	initModeNames();
 
 	adcVals = myADCArray;
@@ -35,17 +37,24 @@ void UIInit(uint16_t* myADCArray)
 	writeModeToLCD(mode, upDownMode);
 	for(int i = 0; i < NUM_KNOBS; i++)
 	{
-		knobRamps[i] = tRampInit(0.05f, 1);
-		lastval[i] = 0.0f;
-	}
+		knobRamps[i] = tRampInit(100.0f, 1);
 
+		val = (int) (adcVals[(NUM_KNOBS-1)-i] * 0.00390625f);
+		lastval[i] = val;
+		val /= 255.0f;
+		if (val < 0.025f) val = 0.025;
+		else if (val > 0.975f) val = 0.975f;
+		val = (val - 0.025f) / 0.95f;
+		tRampSetDest(knobRamps[i], val);
+		tRampSetVal(knobRamps[i], val);
+	}
 }
 
 void UIDrawFrame(void)
 {
-	xPos = (int) (adcVals[1] * INV_TWO_TO_16 * 128);
-	yPos = (int) (32 - (adcVals[0] * INV_TWO_TO_16 * 32));
-	penWeight = (int) (adcVals[2] * INV_TWO_TO_16 * 10);
+	xPos = (int) (knobVals[2] * 128);
+	yPos = (int) (32 - (knobVals[3] * 32));
+	penWeight = (int) (knobVals[1] * 10);
 	OLEDdrawCircle(xPos, yPos, penWeight, penColor);
 }
 
@@ -89,21 +98,16 @@ void processKnobs(void)
 	float val;
 	for(int i = 0; i < NUM_KNOBS; ++i)
 	{
-		val = (int)(adcVals[(NUM_KNOBS-1)-i] * 0.00390625);
-		if((int)val % 10 < 5)
+		val = (int) (adcVals[(NUM_KNOBS-1)-i] * 0.00390625f);
+		if (fabsf(lastval[i] - val) >= 2.0f)
 		{
-			val = (int)(val/10.0f);
-			val = val/25.5f;
+			lastval[i] = val;
+			val /= 255.0f;
+			if (val < 0.025f) val = 0.025;
+			else if (val > 0.975f) val = 0.975f;
+			val = (val - 0.025f) / 0.95f;
 			tRampSetDest(knobRamps[i], val);
 		}
-		else
-		{
-			val = (int)((val+10)/10.0f);
-			val = val/25.5f;
-			tRampSetDest(knobRamps[i], val);
-		}
-		val = tRampTick(knobRamps[i]);
-		knobVals[i] = val;
 	}
 }
 
@@ -112,8 +116,8 @@ static void writeModeToLCD(VocodecMode in, UpDownMode ud)
 {
 	if (in == DrawMode) return;
 	int i = in;
-	if ((formantCorrect > 0) && (in != LevelMode)) i += ModeCount;
-	else if (levelLock && (in == LevelMode)) i += ModeCount;
+	if ((formantCorrect > 0) && (in <= AutotuneAbsoluteMode)) i += ModeCount;
+	else if (knobLock[in]) i += ModeCount;
 	OLEDwriteLine(modeNames[i], 10, FirstLine);
 	OLEDclearLine(SecondLine);
 	if (in == AutotuneNearestMode)
@@ -122,11 +126,11 @@ static void writeModeToLCD(VocodecMode in, UpDownMode ud)
 	}
 	else if (in == AutotuneAbsoluteMode)
 	{
-		OLEDwriteIntLine(activeShifters, 2, SecondLine);
+		OLEDwriteIntLine(numActiveVoices[in], 2, SecondLine);
 	}
 	else if (in == VocoderMode || in == SynthMode)
 	{
-		OLEDwriteIntLine(activeVoices, 2, SecondLine);
+		OLEDwriteIntLine(numActiveVoices[in], 2, SecondLine);
 	}
 	else if (in == BitcrusherMode)
 	{
@@ -172,15 +176,15 @@ static void buttonWasPressed(VocodecButton button)
 			}
 			else if (mode == AutotuneAbsoluteMode)
 			{
-				if (activeShifters < NUM_SHIFTERS) activeShifters++;
-				else activeShifters = 1;
-				//else activeShifters = NUM_SHIFTERS;
+				if (numActiveVoices[mode] < NUM_SHIFTERS) numActiveVoices[mode]++;
+				else numActiveVoices[mode] = 1;
+				//else numActiveVoices[mode] = NUM_SHIFTERS;
 			}
 			else if (mode == VocoderMode || mode == SynthMode)
 			{
-				if (activeVoices < NUM_VOICES) activeVoices++;
-				else activeVoices = 1;
-				//else activeVoices = NUM_VOICES;
+				if (numActiveVoices[mode] < NUM_VOICES) numActiveVoices[mode]++;
+				else numActiveVoices[mode] = 1;
+				//else numActiveVoices[mode] = NUM_VOICES;
 			}
 		}
 	}
@@ -196,14 +200,14 @@ static void buttonWasPressed(VocodecButton button)
 		{
 			if (mode == AutotuneAbsoluteMode)
 			{
-				if (activeShifters > 1) activeShifters--;
-				else activeShifters = NUM_SHIFTERS;
+				if (numActiveVoices[mode] > 1) numActiveVoices[mode]--;
+				else numActiveVoices[mode] = NUM_SHIFTERS;
 				//else activeShifters = 1;
 			}
 			else if (mode == VocoderMode || mode == SynthMode)
 			{
-				if (activeVoices > 1) activeVoices--;
-				else activeVoices = NUM_VOICES;
+				if (numActiveVoices[mode] > 1) numActiveVoices[mode]--;
+				else numActiveVoices[mode] = NUM_VOICES;
 				//else activeVoices = 1;
 			}
 		}
@@ -226,9 +230,17 @@ static void buttonWasPressed(VocodecButton button)
 		{
 			OLEDclear();
 		}
+		else if (mode == DelayMode)
+		{
+			knobLock[mode] = (knobLock[mode] == 0) ? 1 : 0;
+		}
+		else if (mode == DrumboxMode)
+		{
+			knobLock[mode] = (knobLock[mode] == 0) ? 1 : 0;
+		}
 		else if (mode == LevelMode)
 		{
-			levelLock = (levelLock == 0) ? 1 : 0;
+			knobLock[mode] = (knobLock[mode] == 0) ? 1 : 0;
 		}
 	}
 	else if (button == ButtonB)
@@ -416,13 +428,16 @@ static void initModeNames()
 	modeNames[AutotuneAbsoluteMode+ModeCount] = "AUTOTUNE2 ";
 
 	modeNames[DelayMode] = "DELAY     ";
-	modeNames[DelayMode+ModeCount] = "DELAY     ";
+	modeNames[DelayMode+ModeCount] = "DELAY    L";
+
+	modeNames[ReverbMode] = "REVERB    ";
+	modeNames[ReverbMode+ModeCount] = "REVERB    ";
 
 	modeNames[BitcrusherMode] = "BITCRUSHER ";
 	modeNames[BitcrusherMode+ModeCount] = "BITCRUSHER ";
 
 	modeNames[DrumboxMode] = "DRUMBIES  ";
-	modeNames[DrumboxMode+ModeCount] = "DRUMB0X   ";
+	modeNames[DrumboxMode+ModeCount] = "DRUMB0X  L";
 
 	modeNames[SynthMode] = "SYNTH     ";
 	modeNames[SynthMode+ModeCount] = "SYNTH     ";
@@ -431,5 +446,5 @@ static void initModeNames()
 	modeNames[DrawMode+ModeCount] = "          ";
 
 	modeNames[LevelMode] = "LEVEL     ";
-	modeNames[LevelMode+ModeCount] = "LEVEL LOCK";
+	modeNames[LevelMode+ModeCount] = "LEVEL    L";
 }

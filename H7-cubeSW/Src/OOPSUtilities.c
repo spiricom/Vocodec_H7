@@ -1395,6 +1395,7 @@ void tMPoly_setNumVoices(tMPoly* poly, uint8_t numVoices)
 
 void tMPoly_setPitchGlideTime(tMPoly* poly, float t)
 {
+	if (poly->glideTime == t) return;
     poly->glideTime = t;
     for (int i = 0; i < MPOLY_NUM_MAX_VOICES; ++i)
     {

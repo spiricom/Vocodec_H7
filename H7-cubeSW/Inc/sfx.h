@@ -12,7 +12,7 @@
 #include "OOPS.h"
 #include "stm32h7xx_hal.h"
 #include "audiostream.h"
-
+#include "ui.h"
 
 /* Externs -------------------------------------------------------------------*/
 
@@ -23,13 +23,17 @@ extern float pitchFactor;
 extern float formantKnob;
 extern float newFeedback;
 extern float newDelay;
+extern float newFeedbackDB;
+extern float newDelayDB;
 extern int bitDepth;
 extern int rateRatio;
 extern float inputLevel;
 extern float outputLevel;
 
+extern uint8_t numActiveVoices[ModeCount];
+
 extern uint8_t autotuneLock;
-extern uint8_t levelLock;
+extern uint8_t knobLock[ModeCount];
 extern uint8_t formantCorrect;
 
 void SFXInit(float sr, int blocksize);
@@ -53,6 +57,9 @@ int32_t SFXAutotuneAbsoluteTick(int32_t input);
 void SFXDelayFrame();
 int32_t SFXDelayTick(int32_t input);
 
+void SFXReverbFrame();
+int32_t SFXReverbTick(int32_t input);
+
 void SFXBitcrusherFrame();
 int32_t SFXBitcrusherTick(int32_t input);
 
@@ -61,6 +68,9 @@ int32_t SFXDrumboxTick(int32_t input);
 
 void SFXSynthFrame();
 int32_t SFXSynthTick(int32_t input);
+
+void SFXDrawFrame();
+int32_t SFXDrawTick(int32_t input);
 
 void SFXLevelFrame();
 int32_t SFXLevelTick(int32_t input);

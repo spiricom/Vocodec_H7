@@ -34,6 +34,7 @@ typedef enum VocodecMode
 	AutotuneNearestMode,
 	AutotuneAbsoluteMode,
 	DelayMode,
+	ReverbMode,
 	BitcrusherMode,
 	DrumboxMode,
 	SynthMode,
@@ -61,6 +62,7 @@ extern GFX theGFX;
 
 extern uint16_t* adcVals;
 extern float knobVals[NUM_KNOBS];
+extern tRamp* knobRamps[NUM_KNOBS];
 
 typedef enum _OLEDLine
 {

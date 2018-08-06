@@ -79,13 +79,14 @@ int numSamples = AUDIO_FRAME_SIZE;
 
 void audioFrame(uint16_t buffer_offset)
 {
-	if (mode != DrawMode)
+	frameFunctions[mode]();
+	for (int cc=0; cc < numSamples; cc++)
 	{
-		frameFunctions[mode]();
-		for (int cc=0; cc < numSamples; cc++)
+		for (int i = 0; i < NUM_KNOBS; i++)
 		{
-			audioOutBuffer[buffer_offset + (cc*2)] = tickFunctions[mode](audioInBuffer[buffer_offset+(cc*2)]);
+			knobVals[i] = tRampTick(knobRamps[i]);
 		}
+		audioOutBuffer[buffer_offset + (cc*2)] = tickFunctions[mode](audioInBuffer[buffer_offset+(cc*2)]);
 	}
 }
 
@@ -109,6 +110,9 @@ static void initFunctionPointers()
 	frameFunctions[DelayMode] = SFXDelayFrame;
 	tickFunctions[DelayMode] = SFXDelayTick;
 
+	frameFunctions[ReverbMode] = SFXReverbFrame;
+	tickFunctions[ReverbMode] = SFXReverbTick;
+
 	frameFunctions[BitcrusherMode] = SFXBitcrusherFrame;
 	tickFunctions[BitcrusherMode] = SFXBitcrusherTick;
 
@@ -117,6 +121,9 @@ static void initFunctionPointers()
 
 	frameFunctions[SynthMode] = SFXSynthFrame;
 	tickFunctions[SynthMode] = SFXSynthTick;
+
+	frameFunctions[DrawMode] = SFXDrawFrame;
+	tickFunctions[DrawMode] = SFXDrawTick;
 
 	frameFunctions[LevelMode] = SFXLevelFrame;
 	tickFunctions[LevelMode] = SFXLevelTick;

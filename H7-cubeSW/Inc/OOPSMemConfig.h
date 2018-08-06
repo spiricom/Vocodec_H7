@@ -20,7 +20,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #define NUM_VOICES 8
-#define NUM_SHIFTERS 6
+#define NUM_SHIFTERS 2
 #define MPOLY_NUM_MAX_VOICES 8
 #define NUM_OSC 4
 #define INV_NUM_OSC (1.0f / NUM_OSC)
@@ -40,7 +40,7 @@ extern const float shaper1[SHAPER1_TABLE_SIZE];
 #define     N_808HIHAT           0
 #define     N_808COWBELL         0
 #define     N_COMPRESSOR         0
-#define     N_PRCREV             0
+#define     N_PRCREV             1
 #define     N_NREV               0
 #define		N_PERIOD			 1
 #define		N_PITCHSHIFT		 NUM_SHIFTERS
@@ -65,7 +65,7 @@ extern const float shaper1[SHAPER1_TABLE_SIZE];
 #define     N_SVFE               0
 #define     N_HIGHPASS           2 + (1 * N_PITCHSHIFTER) + (1 * N_PITCHSHIFT)
 #define     N_DELAY              0 + (14 * N_NREV) + (3 * N_PRCREV)
-#define     N_DELAYL             2 + (1 * N_STIFKARP) + (1 * N_PLUCK)
+#define     N_DELAYL             1 + (1 * N_STIFKARP) + (1 * N_PLUCK)
 #define     N_DELAYA             0 + (1 * N_PRCREV) + (1 * N_STIFKARP)
 #define     N_ENVELOPE           0
 #define     N_ENV                0 + (1 * N_PITCHSHIFTER) + (1 * N_PERIOD)

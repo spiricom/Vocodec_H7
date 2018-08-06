@@ -104,8 +104,6 @@ extern float mPerVal;
 extern uint16_t knobValue;
 extern int knobMoved;
 extern int calibrated;
-extern int activeVoices;
-extern int activeShifters;
 
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
