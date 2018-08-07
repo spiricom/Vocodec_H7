@@ -34,7 +34,7 @@ extern uint8_t numActiveVoices[ModeCount];
 
 extern uint8_t autotuneLock;
 extern uint8_t knobLock[ModeCount];
-extern uint8_t formantCorrect;
+extern uint8_t formantCorrect[ModeCount];
 
 void SFXInit(float sr, int blocksize);
 

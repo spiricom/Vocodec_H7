@@ -20,7 +20,9 @@ HAL_StatusTypeDef receive_status;
 
 void (*frameFunctions[ModeCount])(void);
 int32_t  (*tickFunctions[ModeCount])(int32_t);
-static void initFunctionPointers();
+VocodecMode audioChain[3];
+
+static void initFunctionPointers(void);
 
 /**********************************************/
 
@@ -79,18 +81,34 @@ int numSamples = AUDIO_FRAME_SIZE;
 
 void audioFrame(uint16_t buffer_offset)
 {
-	frameFunctions[mode]();
+	int sample = 0;
+
+	for (int i = 0; i < 3; i++)
+	{
+		if (modeChain[i] != ModeNil)
+		{
+			frameFunctions[modeChain[i]]();
+		}
+	}
 	for (int cc=0; cc < numSamples; cc++)
 	{
 		for (int i = 0; i < NUM_KNOBS; i++)
 		{
 			knobVals[i] = tRampTick(knobRamps[i]);
 		}
-		audioOutBuffer[buffer_offset + (cc*2)] = tickFunctions[mode](audioInBuffer[buffer_offset+(cc*2)]);
+		sample = audioInBuffer[buffer_offset+(cc*2)];
+		for (int i = 0; i < 3; i++)
+		{
+			if (modeChain[i] != ModeNil)
+			{
+				sample = tickFunctions[modeChain[i]](sample);
+			}
+		}
+		audioOutBuffer[buffer_offset + (cc*2)] = sample;
 	}
 }
 
-static void initFunctionPointers()
+static void initFunctionPointers(void)
 {
 	frameFunctions[VocoderMode] = SFXVocoderFrame;
 	tickFunctions[VocoderMode] = SFXVocoderTick;

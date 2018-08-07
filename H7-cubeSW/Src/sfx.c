@@ -6,8 +6,6 @@
 
 #define NUM_FB_DELAY_TABLES 8
 
-float detuneMax = 3.0f;
-
 float inBuffer[2048] __ATTR_RAM_D2;
 float outBuffer[NUM_SHIFTERS][2048] __ATTR_RAM_D2;
 
@@ -32,15 +30,6 @@ tSVF* highpass;
 tDelayL* delay;
 tPRCRev* rev;
 
-float dbFeedbackSamp = 0.0f;
-float newFreq = 0.0f;
-float newDelay = 0.0f;
-float newFeedback = 0.0f;
-float newDelayDB = 0.0f;
-float newFeedbackDB = 0.0f;
-float gainBoost = 1.0f;
-float m_input1 = 0.0f;
-float m_output0 = 0.0f;
 #define FEEDBACK_LOOKUP_SIZE 5
 #define DELAY_LOOKUP_SIZE 4
 float FeedbackLookup[FEEDBACK_LOOKUP_SIZE] = { 0.0f, 0.8f, .999f, 1.0f, 1.03f };
@@ -49,27 +38,75 @@ float DelayLookup[DELAY_LOOKUP_SIZE] = { 50.f, 180.f, 1400.f, 16300.f };
 float feedbackDelayPeriod[NUM_FB_DELAY_TABLES];
 //const float *feedbackDelayTable[NUM_FB_DELAY_TABLES] = { FB1, FB2, FB3, FB4, FB5, FB6, FB7, FB8 };
 
-float delayFeedbackSamp = 0.0f;
-float lpFreqDel, lpFreqRev, lpFreqVoc, lpFreqSynth;
-float hpFreqDel, hpFreqRev;
+int count = 0;
 
+
+/* PARAMS */
+// Vocoder
+float glideTimeVoc = 5.0f;
+float lpFreqVoc = 10000.0f;
+float detuneMaxVoc = 0.0f;
+
+// Formant
+float formantShiftFactor = -1.0f;
+float formantKnob = 0.0f;
+
+// PitchShift
+float pitchFactor = 2.0f;
+float formantShiftFactorPS = 0.0f;
+
+// Autotune1
+
+// Autotune2
+float glideTimeAuto = 5.0f;
+
+// Delay
+float hpFreqDel = 20.0f;
+float lpFreqDel = 20000.0f;
+float newDelay = 16000.0f;
+float newFeedback = 0.4f;
+
+float delayFeedbackSamp = 0.0f;
+
+// Reverb
+float hpFreqRev = 20.0f;
+float lpFreqRev = 20000.0f;
+float t60 = 3.0f;
+float revMix = 0.5f;
+
+// Bitcrusher
 #define MAX_DEPTH 16
-int bitDepth = MAX_DEPTH;
-int rateRatio;
+int rateRatio = 8;
+int bitDepth = 8;
+
 int lastSamp;
 int sampCount = 0;
 
+// Drumbox
+int decayCoeff = 2000;
+float newFreqDB = 100.0f;
+float newDelayDB = 1000.0f;
+float newFeedbackDB = 0.4f;
+
+float dbFeedbackSamp = 0.0f;
+float gainBoost = 1.0f;
+float m_input1 = 0.0f;
+float m_output0 = 0.0f;
+
+// Synth
+float glideTimeSynth = 5.0f;
+float lpFreqSynth = 5000.0f;
+float detuneMaxSynth = 3.0f;
+
+// Level
 float inputLevel = 1.0f;
 float outputLevel = 1.0f;
-
-float formantShiftFactor;
-float formantKnob;
 
 uint8_t numActiveVoices[ModeCount];
 
 /* PSHIFT vars *************/
 
-float pitchFactor;
+
 float freq[MPOLY_NUM_MAX_VOICES];
 
 float detuneAmounts[NUM_VOICES][NUM_OSC];
@@ -85,7 +122,7 @@ int keyCenter = 5;
 
 uint8_t knobLock[ModeCount];
 uint8_t autotuneLock = 0;
-uint8_t formantCorrect = 0;
+uint8_t formantCorrect[ModeCount];
 
 /****************************************************************************************/
 
@@ -101,11 +138,9 @@ void SFXInit(float sr, int blocksize)
 {
 	for (int i = 0; i < ModeCount; i++)
 	{
-		knobLock[i] = 0;
+		knobLock[i] = 1;
+		formantCorrect[i] = 0;
 	}
-	knobLock[LevelMode] = 1;
-	knobLock[DelayMode] = 1;
-	knobLock[DrumboxMode] = 1;
 
 	// Initialize the audio library. OOPS.
 	OOPSInit(sr, blocksize, &randomNumber);
@@ -120,13 +155,6 @@ void SFXInit(float sr, int blocksize)
 	envFollowNoise = tEnvelopeFollowerInit(0.00001f, 0.0f);
 	envFollowSine = tEnvelopeFollowerInit(0.00001f, 0.0f);
 	delay = tDelayLInit(1000.0f);
-
-	lpFreqDel = 20000.0f;
-	hpFreqDel = 20.0f;
-	newDelay = 16000.0f;
-	newFeedback = 0.3f;
-	newDelayDB = 16000.0f;
-	newFeedbackDB = 0.3f;
 
 	for (int i = 0; i < 128; i++)
 	{
@@ -176,22 +204,22 @@ void SFXVocoderFrame()
 	tMPoly_setNumVoices(mpoly, numActiveVoices[VocoderMode]);
 	if (knobLock[VocoderMode] == 0)
 	{
-		tMPoly_setPitchGlideTime(mpoly, (knobVals[0] * 999.0f) + 1.0f);
-		lpFreqVoc = ((knobVals[2]) * 15600.0f) + 400.0f;
-		tSVFSetFreq(lowpass, lpFreqVoc);
-
+		glideTimeVoc = (knobVals[0] * 999.0f) + 5.0f;
+		lpFreqVoc = ((knobVals[2]) * 17600.0f) + 400.0f;
 		for (int i = 0; i < tMPoly_getNumVoices(mpoly); i++)
 		{
-			detuneMax = (knobVals[3]) * freq[i] * 0.05f;
+			detuneMaxVoc = (knobVals[3]) * freq[i] * 0.05f;
 		}
 	}
+	tMPoly_setPitchGlideTime(mpoly, glideTimeVoc);
+	tSVFSetFreq(lowpass, lpFreqVoc);
 	for (int i = 0; i < tMPoly_getNumVoices(mpoly); i++)
 	{
 		tRampSetDest(ramp[i], (tMPoly_getVelocity(mpoly, i) > 0));
 		calculateFreq(i);
 		for (int j = 0; j < NUM_OSC; j++)
 		{
-			detuneAmounts[i][j] = (detuneSeeds[i][j] * detuneMax) - (detuneMax * 0.5f);
+			detuneAmounts[i][j] = (detuneSeeds[i][j] * detuneMaxVoc) - (detuneMaxVoc * 0.5f);
 			tSawtoothSetFreq(osc[i][j], freq[i] + detuneAmounts[i][j]);
 		}
 	}
@@ -246,25 +274,27 @@ void SFXPitchShiftFrame()
 	if (knobLock[PitchShiftMode] == 0)
 	{
 		pitchFactor = knobVals[2] * 3.5f + 0.50f;
-		tPitchShift_setPitchFactor(pshift[0], pitchFactor);
-		formantKnob = knobVals[1];
-		formantShiftFactor = (formantKnob * 2.0f) - 1.0f;
+		formantShiftFactorPS = (knobVals[1] * 2.0f) - 1.0f;
 	}
+	tPitchShift_setPitchFactor(pshift[0], pitchFactor);
 }
 
 int32_t SFXPitchShiftTick(int32_t input)
 {
+
 	float sample = 0.0f;
 	float output = 0.0f;
 
 	sample = (float) (input * INV_TWO_TO_31)  * inputLevel;
 
-	if (formantCorrect > 0) sample = tFormantShifterRemove(fs, sample) * 2.0f;
+	if (formantCorrect[PitchShiftMode] > 0) sample = tFormantShifterRemove(fs, sample) * 2.0f;
 
 	tPeriod_findPeriod(p, sample);
 	output = tPitchShift_shift(pshift[0]);
 
-	if (formantCorrect > 0) output = tFormantShifterAdd(fs, output, 0.0f);
+	if (formantCorrect[PitchShiftMode] > 0) output = tFormantShifterAdd(fs, output, 0.0f);
+
+	count++;
 
 	return (int32_t) (output * TWO_TO_31 * outputLevel);
 }
@@ -284,12 +314,12 @@ int32_t SFXAutotuneNearestTick(int32_t input)
 
 	sample = (float) (input * INV_TWO_TO_31) * inputLevel;
 
-	if (formantCorrect > 0) sample = tFormantShifterRemove(fs, sample) * 2.0f;
+	if (formantCorrect[AutotuneNearestMode] > 0) sample = tFormantShifterRemove(fs, sample) * 2.0f;
 
 	tPeriod_findPeriod(p, sample);
 	output = tPitchShift_shiftToFunc(pshift[0], nearestPeriod);
 
-	if (formantCorrect > 0) output = tFormantShifterAdd(fs, output, 0.0f);
+	if (formantCorrect[AutotuneNearestMode] > 0) output = tFormantShifterAdd(fs, output, 0.0f);
 
 	return (int32_t) (output * TWO_TO_31 * outputLevel);
 }
@@ -303,8 +333,9 @@ void SFXAutotuneAbsoluteFrame()
 	}
 	if (knobLock[AutotuneAbsoluteMode] == 0)
 	{
-		tMPoly_setPitchGlideTime(mpoly, (knobVals[0] * 999.0f) + 1.0f);
+		glideTimeAuto = (knobVals[0] * 999.0f) + 5.0f;
 	}
+	tMPoly_setPitchGlideTime(mpoly, glideTimeAuto);
 }
 int32_t SFXAutotuneAbsoluteTick(int32_t input)
 {
@@ -315,7 +346,7 @@ int32_t SFXAutotuneAbsoluteTick(int32_t input)
 
 	sample = (float) (input * INV_TWO_TO_31) * inputLevel;
 
-	if (formantCorrect > 0) sample = tFormantShifterRemove(fs, sample) * 2.0f;
+	if (formantCorrect[AutotuneAbsoluteMode] > 0) sample = tFormantShifterRemove(fs, sample) * 2.0f;
 
 	tPeriod_findPeriod(p, sample);
 
@@ -324,7 +355,7 @@ int32_t SFXAutotuneAbsoluteTick(int32_t input)
 		output += tPitchShift_shiftToFreq(pshift[i], freq[i]) * tRampTick(ramp[i]);
 	}
 
-	if (formantCorrect > 0) output = tFormantShifterAdd(fs, output, 0.0f);
+	if (formantCorrect[AutotuneAbsoluteMode] > 0) output = tFormantShifterAdd(fs, output, 0.0f);
 
 	return (int32_t) (output * TWO_TO_31 * outputLevel);
 }
@@ -375,16 +406,17 @@ void SFXReverbFrame()
 {
 	if (knobLock[ReverbMode] == 0)
 	{
-		tPRCRevSetT60(rev, (knobVals[2] * 10.0f));
-		tPRCRevSetMix(rev, (knobVals[3] * 1.0f));
+		t60 = knobVals[2] * 10.0f;
+		revMix = knobVals[3] * 1.0f;
 		lpFreqRev = ((knobVals[1]) * 19900.0f) + 100.0f;
 		if (lpFreqRev < hpFreqRev) lpFreqRev = hpFreqRev;
 		hpFreqRev = ((knobVals[0]) * 10000.0f) + 10.0f;
 		if (hpFreqRev > lpFreqRev) hpFreqRev = lpFreqRev;
 	}
-
 	tSVFSetFreq(lowpass, lpFreqRev);
 	tSVFSetFreq(highpass, hpFreqRev);
+	tPRCRevSetT60(rev, t60);
+	tPRCRevSetMix(rev, revMix);
 }
 
 int32_t SFXReverbTick(int32_t input)
@@ -443,18 +475,17 @@ void SFXDrumboxFrame()
 	if (knobLock[DrumboxMode] == 0)
 	{
 		newFeedbackDB = interpolateFeedback(knobVals[3]);
-
 		newDelayDB = interpolateDelayControl(1.0f - knobVals[2]);
-
-		newFreq =  ((knobVals[1]) * 4.0f) * ((1.0f / newDelayDB) * oops.sampleRate);
-		tRampSetDest(rampSineFreq, newFreq);
-
-		tEnvelopeFollowerDecayCoeff(envFollowSine,decayCoeffTable[(adcVals[3] >> 4)]);
-		tEnvelopeFollowerDecayCoeff(envFollowNoise,0.80f);
+		newFreqDB =  ((knobVals[1]) * 4.0f) * ((1.0f / newDelayDB) * oops.sampleRate);
+		decayCoeff = adcVals[0] >> 4;
 	}
 	tRampSetDest(rampFeedback, newFeedbackDB);
 	tRampSetDest(rampDelayFreq, newDelayDB);
+	tRampSetDest(rampSineFreq, newFreqDB);
+	tEnvelopeFollowerDecayCoeff(envFollowSine,decayCoeffTable[decayCoeff]);
+	tEnvelopeFollowerDecayCoeff(envFollowNoise,0.80f);
 }
+
 int32_t SFXDrumboxTick(int32_t input)
 {
 	float audioIn = 0.0f;
@@ -485,22 +516,23 @@ void SFXSynthFrame()
 	tMPoly_setNumVoices(mpoly, numActiveVoices[SynthMode]);
 	if (knobLock[SynthMode] == 0)
 	{
-		tMPoly_setPitchGlideTime(mpoly, (knobVals[0] * 999.0f) + 5.0f);
+		glideTimeSynth = (knobVals[0] * 999.0f) + 5.0f;
 
-		lpFreqSynth = ((knobVals[2]) * 15600.0f) + 400.0f;
-		tSVFSetFreq(lowpass, lpFreqSynth);
+		lpFreqSynth = ((knobVals[2]) * 17600.0f) + 400.0f;
 
 		for (int i = 0; i < tMPoly_getNumVoices(mpoly); i++)
 		{
-			detuneMax = (knobVals[3]) * freq[i] * 0.05f;
+			detuneMaxSynth = (knobVals[3]) * freq[i] * 0.05f;
 		}
 	}
+	tSVFSetFreq(lowpass, lpFreqSynth);
+	tMPoly_setPitchGlideTime(mpoly, glideTimeSynth);
 	for (int i = 0; i < tMPoly_getNumVoices(mpoly); i++)
 	{
 		calculateFreq(i);
 		for (int j = 0; j < NUM_OSC; j++)
 		{
-			detuneAmounts[i][j] = (detuneSeeds[i][j] * detuneMax) - (detuneMax * 0.5f);
+			detuneAmounts[i][j] = (detuneSeeds[i][j] * detuneMaxSynth) - (detuneMaxSynth * 0.5f);
 			tSawtoothSetFreq(osc[i][j], freq[i] + detuneAmounts[i][j]);
 		}
 	}

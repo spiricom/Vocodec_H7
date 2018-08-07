@@ -287,7 +287,7 @@ int main(void)
 	  {
 		  processKnobs();
 
-		  if (mode == FormantShiftMode)
+		  if (displayMode == FormantShiftMode)
 		  {
 			  GFXfillRect(&theGFX, 0, 16, 128, 16, 0);
 			  int emojiIndex = (int)(formantKnob * 8);
@@ -295,30 +295,30 @@ int main(void)
 			  if (pixel > 104) pixel = 104;
 			  OLEDwriteString(formantEmojis[emojiIndex], 10, pixel%12 , SecondLine);
 		  }
-		  else if (mode == PitchShiftMode)
+		  else if (displayMode == PitchShiftMode)
 		  {
 			  OLEDwriteFixedFloatLine(pitchFactor, 9, 2, SecondLine);
 		  }
-		  else if (mode == DelayMode)
+		  else if (displayMode == DelayMode)
 		  {
 			  OLEDwriteFixedFloat(newDelay*oops.invSampleRate, 4, 3, 4, SecondLine);
 			  OLEDwriteFixedFloat(newFeedback, 3, 2, 76, SecondLine);
 		  }
-		  else if (mode == DrumboxMode)
+		  else if (displayMode == DrumboxMode)
 		  {
 			  OLEDwriteFixedFloat(newDelayDB*oops.invSampleRate, 4, 3, 4, SecondLine);
 			  OLEDwriteFixedFloat(newFeedbackDB, 3, 2, 76, SecondLine);
 		  }
-		  else if (mode == BitcrusherMode)
+		  else if (displayMode == BitcrusherMode)
 		  {
 			  OLEDwriteInt(rateRatio, 3, 4, SecondLine);
 			  OLEDwriteInt(bitDepth, 3, 76, SecondLine);
 		  }
-		  else if (mode == DrawMode)
+		  else if (displayMode == DrawMode)
 		  {
 			  UIDrawFrame();
 		  }
-		  else if (mode == LevelMode)
+		  else if (displayMode == LevelMode)
 		  {
 			  OLEDwriteFixedFloat(inputLevel, 3, 2, 4, SecondLine);
 			  OLEDwriteFixedFloat(outputLevel, 3, 2, 76, SecondLine);
