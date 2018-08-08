@@ -10,9 +10,9 @@ float knobVals[NUM_KNOBS];
 
 uint8_t buttonsHeld[NUM_BUTTONS];
 
-char* modeNames[FullModeCount];
+char* modeNames[ModeCount];
 char* shortModeNames[ModeCount];
-char* chainLockString = " }  }  }  ";
+char homeScreenString[LINE_LENGTH];
 static void initModeNames();
 
 static void buttonWasPressed(VocodecButton button);
@@ -21,7 +21,7 @@ static void downButtonWasPressed(void);
 static void aButtonWasPressed(void);
 static void bButtonWasPressed(void);
 static void buttonWasReleased(VocodecButton button);
-static void writeModeToLCD(VocodecMode in, UpDownMode ud);
+static void writeScreen(void);
 
 uint8_t xPos;
 uint8_t yPos;
@@ -31,12 +31,12 @@ uint8_t penColor = 1;
 tRamp* knobRamps[NUM_KNOBS];
 float lastval[NUM_KNOBS];
 
-UpDownMode upDownMode = ModeChange;
-VocodecMode displayMode = VocoderMode;
+VocodecScreen screen = HomeScreen;
 VocodecMode modeChain[CHAIN_LENGTH];
-uint8_t chainLock[CHAIN_LENGTH];
+LockState chainLock = Locked;
 uint8_t chainIndex = 0;
 uint8_t modeAvail[ModeCount];
+VocodecButton lastButtonPressed = ButtonNil;
 
 void UIInit(uint16_t* myADCArray)
 {
@@ -49,16 +49,15 @@ void UIInit(uint16_t* myADCArray)
 	for (int i = 0; i < CHAIN_LENGTH; i++)
 	{
 		modeChain[i] = ModeNil;
-		chainLock[i] = 0;
 	}
-	modeChain[0] = displayMode;
+	modeChain[0] = VocoderMode;
+
+	writeScreen();
 
 	for (int i = 0; i < ModeCount; i++)
 	{
 		modeAvail[i] = 1;
 	}
-
-	writeModeToLCD(displayMode, upDownMode);
 	for(int i = 0; i < NUM_KNOBS; i++)
 	{
 		knobRamps[i] = tRampInit(100.0f, 1);
@@ -136,180 +135,165 @@ void processKnobs(void)
 }
 
 #define ASCII_NUM_OFFSET 48
-static void writeModeToLCD(VocodecMode in, UpDownMode ud)
+static void writeScreen(void)
 {
-	if (in == DrawMode) return;
-	OLEDwriteLine(modeNames[in], 10, FirstLine);
-	if (in == ChainEditMode)
+	if (screen == HomeScreen)
 	{
-
-		return;
-	}
-	if (knobLock[in] > 0) OLEDwriteString("}", 1, 112, FirstLine);
-	if (in == AutotuneNearestMode)
-	{
-		if (autotuneLock > 0) OLEDwriteLine("LOCK", 4, SecondLine);
-	}
-	else if (in == AutotuneAbsoluteMode || in == VocoderMode || in == SynthMode)
-	{
-		OLEDwriteIntLine(numActiveVoices[in], 2, SecondLine);
-		if (ud == ParameterChange)
+		for (int i = 0; i < LINE_LENGTH; i++)
 		{
-			OLEDwriteString("<", 1, 28, SecondLine);
+			homeScreenString[i] = ' ';
 		}
+		homeScreenString[chainIndex*3] = '>';
+		for (int i = 0; i < CHAIN_LENGTH; i++)
+		{
+			homeScreenString[(i*3)+1] = shortModeNames[modeChain[i]][0];
+			homeScreenString[(i*3)+2] = shortModeNames[modeChain[i]][1];
+		}
+		if (chainLock == Locked)
+		{
+			homeScreenString[9] = '}';
+			if (modeChain[chainIndex] == AutotuneNearestMode)
+			{
+				if (autotuneLock > 0) OLEDwriteLine("LOCK", 4, SecondLine);
+			}
+			else if (modeChain[chainIndex] == AutotuneAbsoluteMode || modeChain[chainIndex] == VocoderMode || modeChain[chainIndex] == SynthMode)
+			{
+				OLEDwriteIntLine(numActiveVoices[modeChain[chainIndex]], 2, SecondLine);
+			}
+		}
+		else
+		{
+			homeScreenString[9] = 'U';
+			OLEDwriteLine(modeNames[modeChain[chainIndex]], 10, SecondLine);
+		}
+		OLEDwriteLine(homeScreenString, 10, FirstLine);
 	}
 }
 
 static void buttonWasPressed(VocodecButton button)
 {
 	buttonsHeld[button] = 1;
+	lastButtonPressed = button;
 	if (button == ButtonUp) upButtonWasPressed();
 	else if (button == ButtonDown) downButtonWasPressed();
 	else if (button == ButtonA) aButtonWasPressed();
 	else if (button == ButtonB) bButtonWasPressed();
 
-	writeModeToLCD(displayMode, upDownMode);
+	writeScreen();
 }
 
 static void upButtonWasPressed()
 {
-	if (upDownMode == ModeChange)
+	if (screen == HomeScreen)
 	{
-		knobLock[displayMode] = 1;
-		for (int i = 0; i < ModeCount; i++)
+		if (chainLock == Locked)
 		{
-			if (displayMode < ModeCount - 1) displayMode++;
-			else displayMode = 0;
-			if (modeAvail[displayMode] > 0) break;
+			if (modeChain[chainIndex] == AutotuneNearestMode)
+			{
+				int notesHeld = 0;
+				for (int i = 0; i < 12; ++i)
+				{
+					if (chordArray[i] > 0) { notesHeld = 1; }
+				}
+
+				if (notesHeld)
+				{
+					for (int i = 0; i < 12; ++i)
+					{
+						lockArray[i] = chordArray[i];
+					}
+				}
+
+				autotuneLock = 1;
+			}
+			if (modeChain[chainIndex] == AutotuneAbsoluteMode)
+			{
+				if (numActiveVoices[modeChain[chainIndex]] < NUM_SHIFTERS) numActiveVoices[modeChain[chainIndex]]++;
+				else numActiveVoices[modeChain[chainIndex]] = 1;
+				//else numActiveVoices[mode] = NUM_SHIFTERS;
+			}
+			else if (modeChain[chainIndex] == VocoderMode || modeChain[chainIndex] == SynthMode)
+			{
+				if (numActiveVoices[modeChain[chainIndex]] < NUM_VOICES) numActiveVoices[modeChain[chainIndex]]++;
+				else numActiveVoices[modeChain[chainIndex]] = 1;
+				//else numActiveVoices[mode] = NUM_VOICES;
+			}
 		}
-		if (chainLock[chainIndex] == 0) modeChain[chainIndex] = displayMode;
-		OLEDclear();
-	}
-	else if (upDownMode == ParameterChange)
-	{
-		if (displayMode == AutotuneAbsoluteMode)
+		else
 		{
-			if (numActiveVoices[displayMode] < NUM_SHIFTERS) numActiveVoices[displayMode]++;
-			else numActiveVoices[displayMode] = 1;
-			//else numActiveVoices[mode] = NUM_SHIFTERS;
-		}
-		else if (displayMode == VocoderMode || displayMode == SynthMode)
-		{
-			if (numActiveVoices[displayMode] < NUM_VOICES) numActiveVoices[displayMode]++;
-			else numActiveVoices[displayMode] = 1;
-			//else numActiveVoices[mode] = NUM_VOICES;
+			if (modeChain[chainIndex] < ModeNil) modeChain[chainIndex]++;
+			else modeChain[chainIndex] = VocoderMode;
 		}
 	}
 }
 
 static void downButtonWasPressed()
 {
-	if (upDownMode == ModeChange)
+	if (screen == HomeScreen)
 	{
-		knobLock[displayMode] = 1;
-		for (int i = 0; i < ModeCount; i++)
+		if (chainLock == Locked)
 		{
-			if (displayMode > 0) displayMode--;
-			else displayMode = ModeCount - 1;
-			if (modeAvail[displayMode] > 0) break;
+			if (modeChain[chainIndex] == AutotuneNearestMode)
+			{
+				int notesHeld = 0;
+				for (int i = 0; i < 12; ++i)
+				{
+					if (chordArray[i] > 0) { notesHeld = 1; }
+				}
+
+				if (notesHeld)
+				{
+					for (int i = 0; i < 12; ++i)
+					{
+						lockArray[i] = chordArray[i];
+					}
+				}
+
+				autotuneLock = 0;
+			}
+			if (modeChain[chainIndex] == AutotuneAbsoluteMode)
+			{
+				if (numActiveVoices[modeChain[chainIndex]] > 1) numActiveVoices[modeChain[chainIndex]]--;
+				else numActiveVoices[modeChain[chainIndex]] = NUM_SHIFTERS;
+				//else activeShifters = 1;
+			}
+			else if (modeChain[chainIndex] == VocoderMode || modeChain[chainIndex] == SynthMode)
+			{
+				if (numActiveVoices[modeChain[chainIndex]] > 1) numActiveVoices[modeChain[chainIndex]]--;
+				else numActiveVoices[modeChain[chainIndex]] = NUM_VOICES;
+				//else activeVoices = 1;
+			}
 		}
-		if (chainLock[chainIndex] == 0) modeChain[chainIndex] = displayMode;
-		OLEDclear();
-	}
-	else if (upDownMode == ParameterChange)
-	{
-		if (displayMode == AutotuneAbsoluteMode)
+		else
 		{
-			if (numActiveVoices[displayMode] > 1) numActiveVoices[displayMode]--;
-			else numActiveVoices[displayMode] = NUM_SHIFTERS;
-			//else activeShifters = 1;
-		}
-		else if (displayMode == VocoderMode || displayMode == SynthMode)
-		{
-			if (numActiveVoices[displayMode] > 1) numActiveVoices[displayMode]--;
-			else numActiveVoices[displayMode] = NUM_VOICES;
-			//else activeVoices = 1;
+			if (modeChain[chainIndex] > 0) modeChain[chainIndex]--;
+			else modeChain[chainIndex] = ModeNil;
 		}
 	}
 }
 
 static void aButtonWasPressed()
 {
-	if (buttonsHeld[ButtonB] > 0)
-	{
-		if (displayMode == ChainEditMode)
-		{
-			displayMode = modeChain[0];
-			upDownMode = ModeChange;
-		}
-		else
-		{
-			displayMode = ChainEditMode;
-			upDownMode = ParameterChange;
-		}
-	}
-	else if (knobLock[displayMode] > 0) knobLock[displayMode] = 0;
-	else
-	{
-		if (displayMode == PitchShiftMode || displayMode == AutotuneNearestMode || displayMode == AutotuneAbsoluteMode)
-		{
-			formantCorrect[displayMode] = (formantCorrect[displayMode] > 0) ? 0 : 1;
-		}
-		else if (displayMode == DrawMode)
-		{
-			OLEDclear();
-		}
-	}
+	// does everything on release
 }
 
 static void bButtonWasPressed()
 {
-	if (upDownMode == ModeChange)
+	if (screen == HomeScreen)
 	{
-		if (displayMode == AutotuneNearestMode)
-		{
-			int notesHeld = 0;
-			for (int i = 0; i < 12; ++i)
-			{
-				if (chordArray[i] > 0) { notesHeld = 1; }
-			}
-
-			if (notesHeld)
-			{
-				for (int i = 0; i < 12; ++i)
-				{
-					lockArray[i] = chordArray[i];
-				}
-			}
-
-			autotuneLock = (autotuneLock > 0) ? 0 : 1;
-		}
-		else if (displayMode == AutotuneAbsoluteMode)
-		{
-			upDownMode = ParameterChange;
-		}
-		else if (displayMode == VocoderMode || displayMode == SynthMode)
-		{
-			upDownMode = ParameterChange;
-		}
-		else if (displayMode == DrawMode)
-		{
-			penColor = (penColor > 0) ? 0 : 1;
-		}
-	}
-	else if (upDownMode == ParameterChange)
-	{
-		if (displayMode == ChainEditMode)
-		{
-
-		}
-		else upDownMode = ModeChange;
+		if (chainIndex < (CHAIN_LENGTH - 1)) chainIndex++;
+		else chainIndex = 0;
 	}
 }
 
 static void buttonWasReleased(VocodecButton button)
 {
 	buttonsHeld[button] = 0;
+	if ((button == ButtonA) && (lastButtonPressed == ButtonA))
+	{
+		chainLock = (chainLock == Locked) ? Unlocked : Locked;
+		writeScreen();
+	}
 }
 
 void OLEDdrawPoint(int16_t x, int16_t y, uint16_t color)
@@ -449,6 +433,6 @@ static void initModeNames()
 	shortModeNames[DrawMode] = "DW";
 	modeNames[LevelMode] = "LEVEL     ";
 	shortModeNames[LevelMode] = "LV";
-
-	modeNames[ChainEditMode] = ">VC -- -- ";
+	modeNames[ModeNil] = "          ";
+	shortModeNames[ModeNil] = "--";
 }

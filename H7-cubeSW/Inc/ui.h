@@ -3,6 +3,7 @@
 #define __UI_H
 
 #define CHAIN_LENGTH 3
+#define LINE_LENGTH 10
 
 typedef enum LCDModeType
 {
@@ -42,15 +43,29 @@ typedef enum VocodecMode
 	SynthMode,
 	DrawMode,
 	LevelMode,
-	ModeCount,
-	ChainEditMode,
-	FullModeCount,
-	ModeNil
+	ModeNil,
+	ModeCount
 } VocodecMode;
 
+typedef enum VocodecScreen
+{
+	HomeScreen = 0,
+	EditScreen,
+	ScreenCount,
+	ScreenNil
+} VocodecScreen;
+
+typedef enum LockState
+{
+	Unlocked = 0,
+	Locked,
+	LockNil
+} LockState;
+
 extern VocodecMode modeChain[CHAIN_LENGTH];
-extern VocodecMode displayMode;
-extern LCDModeType lcdMode;
+extern uint8_t chainIndex;
+extern LockState chainLock;
+extern VocodecScreen screen;
 
 uint8_t oled_buffer[32];
 

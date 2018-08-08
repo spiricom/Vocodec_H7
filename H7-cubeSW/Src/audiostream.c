@@ -18,8 +18,8 @@ float audioTickR(float audioIn);
 HAL_StatusTypeDef transmit_status;
 HAL_StatusTypeDef receive_status;
 
-void (*frameFunctions[ModeCount])(void);
-int32_t  (*tickFunctions[ModeCount])(int32_t);
+void (*frameFunctions[ModeCount - 1])(void);
+int32_t  (*tickFunctions[ModeCount - 1])(int32_t);
 VocodecMode audioChain[3];
 
 static void initFunctionPointers(void);
@@ -82,8 +82,7 @@ int numSamples = AUDIO_FRAME_SIZE;
 void audioFrame(uint16_t buffer_offset)
 {
 	int sample = 0;
-
-	for (int i = 0; i < 3; i++)
+	for (int i = 0; i < CHAIN_LENGTH; i++)
 	{
 		if (modeChain[i] != ModeNil)
 		{

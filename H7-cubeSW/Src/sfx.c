@@ -70,7 +70,7 @@ float delayFeedbackSamp = 0.0f;
 
 // Reverb
 float hpFreqRev = 20.0f;
-float lpFreqRev = 20000.0f;
+float lpFreqRev = 20;//000.0f;
 float t60 = 3.0f;
 float revMix = 0.5f;
 
@@ -95,6 +95,7 @@ float m_output0 = 0.0f;
 
 // Synth
 float glideTimeSynth = 5.0f;
+float synthGain = 1.0f;
 float lpFreqSynth = 5000.0f;
 float detuneMaxSynth = 3.0f;
 
@@ -120,7 +121,6 @@ int lockArray[12];
 float centsDeviation[12] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
 int keyCenter = 5;
 
-uint8_t knobLock[ModeCount];
 uint8_t autotuneLock = 0;
 uint8_t formantCorrect[ModeCount];
 
@@ -138,7 +138,6 @@ void SFXInit(float sr, int blocksize)
 {
 	for (int i = 0; i < ModeCount; i++)
 	{
-		knobLock[i] = 1;
 		formantCorrect[i] = 0;
 	}
 
@@ -202,7 +201,7 @@ void SFXInit(float sr, int blocksize)
 void SFXVocoderFrame()
 {
 	tMPoly_setNumVoices(mpoly, numActiveVoices[VocoderMode]);
-	if (knobLock[VocoderMode] == 0)
+	if ((modeChain[chainIndex] == VocoderMode) && (chainLock == Locked))
 	{
 		glideTimeVoc = (knobVals[0] * 999.0f) + 5.0f;
 		lpFreqVoc = ((knobVals[2]) * 17600.0f) + 400.0f;
@@ -251,7 +250,7 @@ int32_t SFXVocoderTick(int32_t input)
 
 void SFXFormantFrame()
 {
-	if (knobLock[FormantShiftMode] == 0)
+	if ((modeChain[chainIndex] == FormantShiftMode) && (chainLock == Locked))
 	{
 		formantKnob = knobVals[2];
 		formantShiftFactor = (formantKnob * 2.0f) - 1.0f;
@@ -271,7 +270,7 @@ int32_t SFXFormantTick(int32_t input)
 
 void SFXPitchShiftFrame()
 {
-	if (knobLock[PitchShiftMode] == 0)
+	if ((modeChain[chainIndex] == PitchShiftMode) && (chainLock == Locked))
 	{
 		pitchFactor = knobVals[2] * 3.5f + 0.50f;
 		formantShiftFactorPS = (knobVals[1] * 2.0f) - 1.0f;
@@ -301,7 +300,7 @@ int32_t SFXPitchShiftTick(int32_t input)
 
 void SFXAutotuneNearestFrame()
 {
-	if (knobLock[AutotuneNearestMode] == 0)
+	if ((modeChain[chainIndex] == AutotuneNearestMode) && (chainLock == Locked))
 	{
 
 	}
@@ -327,15 +326,15 @@ int32_t SFXAutotuneNearestTick(int32_t input)
 void SFXAutotuneAbsoluteFrame()
 {
 	tMPoly_setNumVoices(mpoly, numActiveVoices[AutotuneAbsoluteMode]);
-	for (int i = 0; i < tMPoly_getNumVoices(mpoly); ++i)
-	{
-		calculateFreq(i);
-	}
-	if (knobLock[AutotuneAbsoluteMode] == 0)
+	if ((modeChain[chainIndex] == AutotuneAbsoluteMode) && (chainLock == Locked))
 	{
 		glideTimeAuto = (knobVals[0] * 999.0f) + 5.0f;
 	}
 	tMPoly_setPitchGlideTime(mpoly, glideTimeAuto);
+	for (int i = 0; i < tMPoly_getNumVoices(mpoly); ++i)
+	{
+		calculateFreq(i);
+	}
 }
 int32_t SFXAutotuneAbsoluteTick(int32_t input)
 {
@@ -362,7 +361,7 @@ int32_t SFXAutotuneAbsoluteTick(int32_t input)
 
 void SFXDelayFrame()
 {
-	if (knobLock[DelayMode] == 0)
+	if ((modeChain[chainIndex] == DelayMode) && (chainLock == Locked))
 	{
 		newFeedback = interpolateFeedback(knobVals[3]);
 		newDelay = interpolateDelayControl(1.0f - knobVals[2]);
@@ -404,7 +403,7 @@ int32_t SFXDelayTick(int32_t input)
 
 void SFXReverbFrame()
 {
-	if (knobLock[ReverbMode] == 0)
+	if ((modeChain[chainIndex] == ReverbMode) && (chainLock == Locked))
 	{
 		t60 = knobVals[2] * 10.0f;
 		revMix = knobVals[3] * 1.0f;
@@ -436,7 +435,7 @@ int32_t SFXReverbTick(int32_t input)
 
 void SFXBitcrusherFrame()
 {
-	if (knobLock[BitcrusherMode] == 0)
+	if ((modeChain[chainIndex] == BitcrusherMode) && (chainLock == Locked))
 	{
 		bitDepth = (((int) (knobVals[3] * 16)) > 0) ? (int) (knobVals[3] * 16) : 1;
 		rateRatio = (((int) (knobVals[2] * 128)) > 0) ? (int) (knobVals[2] * 128) : 1;
@@ -472,7 +471,7 @@ int32_t SFXBitcrusherTick(int32_t input)
 
 void SFXDrumboxFrame()
 {
-	if (knobLock[DrumboxMode] == 0)
+	if ((modeChain[chainIndex] == DrumboxMode) && (chainLock == Locked))
 	{
 		newFeedbackDB = interpolateFeedback(knobVals[3]);
 		newDelayDB = interpolateDelayControl(1.0f - knobVals[2]);
@@ -514,9 +513,11 @@ int32_t SFXDrumboxTick(int32_t input)
 void SFXSynthFrame()
 {
 	tMPoly_setNumVoices(mpoly, numActiveVoices[SynthMode]);
-	if (knobLock[SynthMode] == 0)
+	if ((modeChain[chainIndex] == SynthMode) && (chainLock == Locked))
 	{
 		glideTimeSynth = (knobVals[0] * 999.0f) + 5.0f;
+
+		synthGain = knobVals[1];
 
 		lpFreqSynth = ((knobVals[2]) * 17600.0f) + 400.0f;
 
@@ -545,8 +546,6 @@ int32_t SFXSynthTick(int32_t input)
 
 	tMPoly_tick(mpoly);
 
-	//input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31);
-
 	for (int i = 0; i < tMPoly_getNumVoices(mpoly); i++)
 	{
 		for (int j = 0; j < NUM_OSC; j++)
@@ -555,12 +554,11 @@ int32_t SFXSynthTick(int32_t input)
 		}
 	}
 
-	//sample = tTalkboxTick(vocoder, sample, input);
-
 	sample = tSVFTick(lowpass, sample) * INV_NUM_OSC * 0.5f;
 
-	output = tanhf(sample);
-	return (int32_t) (output * TWO_TO_31);
+	output = tanhf(sample * synthGain); // before or after clip?
+
+	return ((int32_t) (output * TWO_TO_31) + input);
 }
 
 void SFXDrawFrame()
@@ -575,7 +573,7 @@ int32_t SFXDrawTick(int32_t input)
 
 void SFXLevelFrame()
 {
-	if (knobLock[LevelMode] == 0)
+	if ((modeChain[chainIndex] == LevelMode) && (chainLock == Locked))
 	{
 		inputLevel = knobVals[0] * 3.0f;
 		outputLevel = knobVals[1] * 3.0f;

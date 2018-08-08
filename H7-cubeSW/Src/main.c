@@ -287,41 +287,51 @@ int main(void)
 	  {
 		  processKnobs();
 
-		  if (displayMode == FormantShiftMode)
+		  if (screen == HomeScreen)
 		  {
-			  GFXfillRect(&theGFX, 0, 16, 128, 16, 0);
-			  int emojiIndex = (int)(formantKnob * 8);
-			  int pixel = (int)(formantKnob * 8 * 12);
-			  if (pixel > 104) pixel = 104;
-			  OLEDwriteString(formantEmojis[emojiIndex], 10, pixel%12, SecondLine);
+			  if (chainLock == Locked)
+			  {
+				  if (modeChain[chainIndex] == FormantShiftMode)
+				  {
+					  GFXfillRect(&theGFX, 0, 16, 128, 16, 0);
+					  int emojiIndex = (int)(formantKnob * 8);
+					  int pixel = (int)(formantKnob * 8 * 12);
+					  if (pixel > 104) pixel = 104;
+					  OLEDwriteString(formantEmojis[emojiIndex], 10, pixel%12, SecondLine);
+				  }
+				  else if (modeChain[chainIndex] == PitchShiftMode)
+				  {
+					  OLEDwriteFixedFloatLine(pitchFactor, 9, 2, SecondLine);
+				  }
+				  else if (modeChain[chainIndex] == DelayMode)
+				  {
+					  OLEDwriteFixedFloat(newDelay*oops.invSampleRate, 4, 3, 4, SecondLine);
+					  OLEDwriteFixedFloat(newFeedback, 3, 2, 76, SecondLine);
+				  }
+				  else if (modeChain[chainIndex] == DrumboxMode)
+				  {
+					  OLEDwriteFixedFloat(newDelayDB*oops.invSampleRate, 4, 3, 4, SecondLine);
+					  OLEDwriteFixedFloat(newFeedbackDB, 3, 2, 76, SecondLine);
+				  }
+				  else if (modeChain[chainIndex] == BitcrusherMode)
+				  {
+					  OLEDwriteInt(rateRatio, 3, 4, SecondLine);
+					  OLEDwriteInt(bitDepth, 3, 76, SecondLine);
+				  }
+				  else if (modeChain[chainIndex] == LevelMode)
+				  {
+					  OLEDwriteFixedFloat(inputLevel, 3, 2, 4, SecondLine);
+					  OLEDwriteFixedFloat(outputLevel, 3, 2, 76, SecondLine);
+				  }
+			  }
 		  }
-		  else if (displayMode == PitchShiftMode)
+		  else if (screen == EditScreen)
 		  {
-			  OLEDwriteFixedFloatLine(pitchFactor, 9, 2, SecondLine);
-		  }
-		  else if (displayMode == DelayMode)
-		  {
-			  OLEDwriteFixedFloat(newDelay*oops.invSampleRate, 4, 3, 4, SecondLine);
-			  OLEDwriteFixedFloat(newFeedback, 3, 2, 76, SecondLine);
-		  }
-		  else if (displayMode == DrumboxMode)
-		  {
-			  OLEDwriteFixedFloat(newDelayDB*oops.invSampleRate, 4, 3, 4, SecondLine);
-			  OLEDwriteFixedFloat(newFeedbackDB, 3, 2, 76, SecondLine);
-		  }
-		  else if (displayMode == BitcrusherMode)
-		  {
-			  OLEDwriteInt(rateRatio, 3, 4, SecondLine);
-			  OLEDwriteInt(bitDepth, 3, 76, SecondLine);
-		  }
-		  else if (displayMode == DrawMode)
-		  {
-			  UIDrawFrame();
-		  }
-		  else if (displayMode == LevelMode)
-		  {
-			  OLEDwriteFixedFloat(inputLevel, 3, 2, 4, SecondLine);
-			  OLEDwriteFixedFloat(outputLevel, 3, 2, 76, SecondLine);
+			  /*
+			  else if (modeChain[chainIndex] == DrawMode)
+			  {
+				  UIDrawFrame();
+			  } */
 		  }
 		  buttonCheck(); // should happen here, not frame, or else interrupts audio processing
 		  counter = 0;
