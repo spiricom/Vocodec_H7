@@ -27,6 +27,7 @@ extern float newFeedbackDB;
 extern float newDelayDB;
 extern int bitDepth;
 extern int rateRatio;
+
 extern float inputLevel;
 extern float outputLevel;
 

@@ -293,7 +293,7 @@ int main(void)
 			  int emojiIndex = (int)(formantKnob * 8);
 			  int pixel = (int)(formantKnob * 8 * 12);
 			  if (pixel > 104) pixel = 104;
-			  OLEDwriteString(formantEmojis[emojiIndex], 10, pixel%12 , SecondLine);
+			  OLEDwriteString(formantEmojis[emojiIndex], 10, pixel%12, SecondLine);
 		  }
 		  else if (displayMode == PitchShiftMode)
 		  {

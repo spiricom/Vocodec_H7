@@ -231,7 +231,7 @@ int32_t SFXVocoderTick(int32_t input)
 
 	tMPoly_tick(mpoly);
 
-	sample = (float) (input * INV_TWO_TO_31) * inputLevel;
+	sample = (float) (input * INV_TWO_TO_31);
 
 	for (int i = 0; i < tMPoly_getNumVoices(mpoly); i++)
 	{
@@ -246,7 +246,7 @@ int32_t SFXVocoderTick(int32_t input)
 	output = tSVFTick(lowpass, output);
 	output = tanhf(output);
 
-	return (int32_t) (output * TWO_TO_31 * outputLevel);
+	return (int32_t) (output * TWO_TO_31);
 }
 
 void SFXFormantFrame()
@@ -262,11 +262,11 @@ int32_t SFXFormantTick(int32_t input)
 	float sample = 0.0f;
 	float output = 0.0f;
 
-	sample = (float) (input * INV_TWO_TO_31 * 2)  * inputLevel;
+	sample = (float) (input * INV_TWO_TO_31 * 2);
 
 	output = tFormantShifterTick(fs, sample, formantShiftFactor);
 
-	return (int32_t) (output * TWO_TO_31 * 0.5f * outputLevel);
+	return (int32_t) (output * TWO_TO_31 * 0.5f);
 }
 
 void SFXPitchShiftFrame()
@@ -285,18 +285,18 @@ int32_t SFXPitchShiftTick(int32_t input)
 	float sample = 0.0f;
 	float output = 0.0f;
 
-	sample = (float) (input * INV_TWO_TO_31)  * inputLevel;
+	sample = (float) (input * INV_TWO_TO_31);
 
-	if (formantCorrect[PitchShiftMode] > 0) sample = tFormantShifterRemove(fs, sample) * 2.0f;
+	if (formantCorrect[PitchShiftMode] > 0) sample = tFormantShifterRemove(fs, sample * 2.0f);
 
 	tPeriod_findPeriod(p, sample);
 	output = tPitchShift_shift(pshift[0]);
 
-	if (formantCorrect[PitchShiftMode] > 0) output = tFormantShifterAdd(fs, output, 0.0f);
+	if (formantCorrect[PitchShiftMode] > 0) output = tFormantShifterAdd(fs, output, 0.0f) * 0.5f;
 
 	count++;
 
-	return (int32_t) (output * TWO_TO_31 * outputLevel);
+	return (int32_t) (output * TWO_TO_31);
 }
 
 void SFXAutotuneNearestFrame()
@@ -312,16 +312,16 @@ int32_t SFXAutotuneNearestTick(int32_t input)
 	float sample = 0.0f;
 	float output = 0.0f;
 
-	sample = (float) (input * INV_TWO_TO_31) * inputLevel;
+	sample = (float) (input * INV_TWO_TO_31);
 
-	if (formantCorrect[AutotuneNearestMode] > 0) sample = tFormantShifterRemove(fs, sample) * 2.0f;
+	if (formantCorrect[AutotuneNearestMode] > 0) sample = tFormantShifterRemove(fs, sample * 2.0f);
 
 	tPeriod_findPeriod(p, sample);
 	output = tPitchShift_shiftToFunc(pshift[0], nearestPeriod);
 
-	if (formantCorrect[AutotuneNearestMode] > 0) output = tFormantShifterAdd(fs, output, 0.0f);
+	if (formantCorrect[AutotuneNearestMode] > 0) output = tFormantShifterAdd(fs, output, 0.0f) * 0.5f;
 
-	return (int32_t) (output * TWO_TO_31 * outputLevel);
+	return (int32_t) (output * TWO_TO_31);
 }
 
 void SFXAutotuneAbsoluteFrame()
@@ -344,9 +344,9 @@ int32_t SFXAutotuneAbsoluteTick(int32_t input)
 
 	tMPoly_tick(mpoly);
 
-	sample = (float) (input * INV_TWO_TO_31) * inputLevel;
+	sample = (float) (input * INV_TWO_TO_31);
 
-	if (formantCorrect[AutotuneAbsoluteMode] > 0) sample = tFormantShifterRemove(fs, sample) * 2.0f;
+	if (formantCorrect[AutotuneAbsoluteMode] > 0) sample = tFormantShifterRemove(fs, sample * 2.0f);
 
 	tPeriod_findPeriod(p, sample);
 
@@ -355,9 +355,9 @@ int32_t SFXAutotuneAbsoluteTick(int32_t input)
 		output += tPitchShift_shiftToFreq(pshift[i], freq[i]) * tRampTick(ramp[i]);
 	}
 
-	if (formantCorrect[AutotuneAbsoluteMode] > 0) output = tFormantShifterAdd(fs, output, 0.0f);
+	if (formantCorrect[AutotuneAbsoluteMode] > 0) output = tFormantShifterAdd(fs, output, 0.0f) * 0.5f;
 
-	return (int32_t) (output * TWO_TO_31 * outputLevel);
+	return (int32_t) (output * TWO_TO_31);
 }
 
 void SFXDelayFrame()
@@ -384,7 +384,7 @@ int32_t SFXDelayTick(int32_t input)
 	float sample = 0.0f;
 	float output = 0.0f;
 
-	sample = (float) (input * INV_TWO_TO_31) * inputLevel;
+	sample = (float) (input * INV_TWO_TO_31);
 
 	tDelayLSetDelay(delay, tRampTick(rampDelayFreq));
 
@@ -399,7 +399,7 @@ int32_t SFXDelayTick(int32_t input)
 
 	output += sample;
 
-	return (int32_t) (output * TWO_TO_31 * outputLevel);
+	return (int32_t) (output * TWO_TO_31);
 }
 
 void SFXReverbFrame()
@@ -424,14 +424,14 @@ int32_t SFXReverbTick(int32_t input)
 	float sample = 0.0f;
 	float output = 0.0f;
 
-	sample = (float) (input * INV_TWO_TO_31) * inputLevel;
+	sample = (float) (input * INV_TWO_TO_31);
 
 	output = tPRCRevTick(rev, sample);
 
 	output = tSVFTick(lowpass, output);
 	output = tSVFTick(highpass, output);
 
-	return (int32_t) (output * TWO_TO_31 * outputLevel);
+	return (int32_t) (output * TWO_TO_31);
 }
 
 void SFXBitcrusherFrame()
@@ -447,7 +447,7 @@ int32_t SFXBitcrusherTick(int32_t input)
 	float sample = 0.0f;
 	float output = 0.0f;
 
-	sample = (float) (input * INV_TWO_TO_31) * inputLevel;
+	sample = (float) (input * INV_TWO_TO_31);
 
 	int samp = (int32_t) (sample * TWO_TO_31);
 	int twoToCrush = (int) exp2f(32 - bitDepth);
@@ -467,7 +467,7 @@ int32_t SFXBitcrusherTick(int32_t input)
 
 	output = (float) (lastSamp * INV_TWO_TO_31);
 
-	return (int32_t) (output * TWO_TO_31 * outputLevel);
+	return (int32_t) (output * TWO_TO_31);
 }
 
 void SFXDrumboxFrame()
@@ -492,7 +492,7 @@ int32_t SFXDrumboxTick(int32_t input)
 	float sample = 0.0f;
 	float output = 0.0f;
 
-	audioIn = (float) (input * INV_TWO_TO_31) * inputLevel;
+	audioIn = (float) (input * INV_TWO_TO_31);
 
 	tCycleSetFreq(sin1, tRampTick(rampSineFreq));
 
@@ -508,7 +508,7 @@ int32_t SFXDrumboxTick(int32_t input)
 	sample = tHighpassTick(highpass1, sample);
 	sample = OOPS_shaper(sample * 0.6, 1.0f);
 
-	return (int32_t) (sample * TWO_TO_31 * outputLevel);
+	return (int32_t) (sample * TWO_TO_31);
 }
 
 void SFXSynthFrame()
@@ -545,7 +545,7 @@ int32_t SFXSynthTick(int32_t input)
 
 	tMPoly_tick(mpoly);
 
-	//input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31)  * inputLevel;
+	//input = (float) (audioInBuffer[buffer_offset+(cc*2)] * INV_TWO_TO_31);
 
 	for (int i = 0; i < tMPoly_getNumVoices(mpoly); i++)
 	{
@@ -560,7 +560,7 @@ int32_t SFXSynthTick(int32_t input)
 	sample = tSVFTick(lowpass, sample) * INV_NUM_OSC * 0.5f;
 
 	output = tanhf(sample);
-	return (int32_t) (output * TWO_TO_31 * outputLevel);
+	return (int32_t) (output * TWO_TO_31);
 }
 
 void SFXDrawFrame()
@@ -570,7 +570,7 @@ void SFXDrawFrame()
 
 int32_t SFXDrawTick(int32_t input)
 {
-	return 0;
+	return input;
 }
 
 void SFXLevelFrame()
@@ -585,8 +585,8 @@ int32_t SFXLevelTick(int32_t input)
 {
 	float output = 0.0f;
 
-	output = (float) (input * INV_TWO_TO_31) * inputLevel;
-	return (int32_t) (output * TWO_TO_31 * outputLevel);
+	output = (float) (input * INV_TWO_TO_31);
+	return (int32_t) (output * TWO_TO_31);
 }
 
 /**************** MPoly Handling ***********************/

@@ -2,6 +2,8 @@
 #ifndef __UI_H
 #define __UI_H
 
+#define CHAIN_LENGTH 3
+
 typedef enum LCDModeType
 {
 	LCDModeDisplayPitchClass = 0,
@@ -42,16 +44,15 @@ typedef enum VocodecMode
 	LevelMode,
 	ModeCount,
 	ChainEditMode,
+	FullModeCount,
 	ModeNil
 } VocodecMode;
 
-extern VocodecMode modeChain[3];
+extern VocodecMode modeChain[CHAIN_LENGTH];
 extern VocodecMode displayMode;
 extern LCDModeType lcdMode;
 
-
 uint8_t oled_buffer[32];
-
 
 #define NUM_BUTTONS 16
 #define NUM_KNOBS 4

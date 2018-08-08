@@ -10,7 +10,9 @@ float knobVals[NUM_KNOBS];
 
 uint8_t buttonsHeld[NUM_BUTTONS];
 
-char* modeNames[ModeCount];
+char* modeNames[FullModeCount];
+char* shortModeNames[ModeCount];
+char* chainLockString = " }  }  }  ";
 static void initModeNames();
 
 static void buttonWasPressed(VocodecButton button);
@@ -31,9 +33,10 @@ float lastval[NUM_KNOBS];
 
 UpDownMode upDownMode = ModeChange;
 VocodecMode displayMode = VocoderMode;
-VocodecMode modeChain[3];
-uint8_t chainLock[3];
+VocodecMode modeChain[CHAIN_LENGTH];
+uint8_t chainLock[CHAIN_LENGTH];
 uint8_t chainIndex = 0;
+uint8_t modeAvail[ModeCount];
 
 void UIInit(uint16_t* myADCArray)
 {
@@ -43,12 +46,17 @@ void UIInit(uint16_t* myADCArray)
 
 	adcVals = myADCArray;
 
+	for (int i = 0; i < CHAIN_LENGTH; i++)
+	{
+		modeChain[i] = ModeNil;
+		chainLock[i] = 0;
+	}
 	modeChain[0] = displayMode;
-	modeChain[1] = ModeNil;
-	modeChain[2] = ModeNil;
-	chainLock[0] = 0;
-	chainLock[1] = 0;
-	chainLock[2] = 0;
+
+	for (int i = 0; i < ModeCount; i++)
+	{
+		modeAvail[i] = 1;
+	}
 
 	writeModeToLCD(displayMode, upDownMode);
 	for(int i = 0; i < NUM_KNOBS; i++)
@@ -131,13 +139,13 @@ void processKnobs(void)
 static void writeModeToLCD(VocodecMode in, UpDownMode ud)
 {
 	if (in == DrawMode) return;
-	else if (in == ChainEditMode)
+	OLEDwriteLine(modeNames[in], 10, FirstLine);
+	if (in == ChainEditMode)
 	{
-		//write chain stuff
+
 		return;
 	}
-	OLEDwriteLine(modeNames[in], 10, FirstLine);
-	if (knobLock[in] > 0) OLEDwriteString("L", 1, 112, FirstLine);
+	if (knobLock[in] > 0) OLEDwriteString("}", 1, 112, FirstLine);
 	if (in == AutotuneNearestMode)
 	{
 		if (autotuneLock > 0) OLEDwriteLine("LOCK", 4, SecondLine);
@@ -147,7 +155,7 @@ static void writeModeToLCD(VocodecMode in, UpDownMode ud)
 		OLEDwriteIntLine(numActiveVoices[in], 2, SecondLine);
 		if (ud == ParameterChange)
 		{
-			OLEDwriteString("<", 1, 112, SecondLine);
+			OLEDwriteString("<", 1, 28, SecondLine);
 		}
 	}
 }
@@ -168,8 +176,12 @@ static void upButtonWasPressed()
 	if (upDownMode == ModeChange)
 	{
 		knobLock[displayMode] = 1;
-		if (displayMode < ModeCount - 1) displayMode++;
-		else displayMode = 0;
+		for (int i = 0; i < ModeCount; i++)
+		{
+			if (displayMode < ModeCount - 1) displayMode++;
+			else displayMode = 0;
+			if (modeAvail[displayMode] > 0) break;
+		}
 		if (chainLock[chainIndex] == 0) modeChain[chainIndex] = displayMode;
 		OLEDclear();
 	}
@@ -195,8 +207,12 @@ static void downButtonWasPressed()
 	if (upDownMode == ModeChange)
 	{
 		knobLock[displayMode] = 1;
-		if (displayMode > 0) displayMode--;
-		else displayMode = ModeCount - 1;
+		for (int i = 0; i < ModeCount; i++)
+		{
+			if (displayMode > 0) displayMode--;
+			else displayMode = ModeCount - 1;
+			if (modeAvail[displayMode] > 0) break;
+		}
 		if (chainLock[chainIndex] == 0) modeChain[chainIndex] = displayMode;
 		OLEDclear();
 	}
@@ -235,7 +251,7 @@ static void aButtonWasPressed()
 	else if (knobLock[displayMode] > 0) knobLock[displayMode] = 0;
 	else
 	{
-		if (displayMode == FormantShiftMode || displayMode == PitchShiftMode || displayMode == AutotuneAbsoluteMode)
+		if (displayMode == PitchShiftMode || displayMode == AutotuneNearestMode || displayMode == AutotuneAbsoluteMode)
 		{
 			formantCorrect[displayMode] = (formantCorrect[displayMode] > 0) ? 0 : 1;
 		}
@@ -410,15 +426,29 @@ void OLEDwriteFixedFloatLine(float input, uint8_t numDigits, uint8_t numDecimal,
 static void initModeNames()
 {
 	modeNames[VocoderMode] = "VOCODER   ";
+	shortModeNames[VocoderMode] = "VC";
 	modeNames[FormantShiftMode] = "FORMANT   ";
+	shortModeNames[FormantShiftMode] = "FS";
 	modeNames[PitchShiftMode] = "PITCHSHIFT";
+	shortModeNames[PitchShiftMode] = "PS";
 	modeNames[AutotuneNearestMode] = "AUTOTUNE1 ";
+	shortModeNames[AutotuneNearestMode] = "A1";
 	modeNames[AutotuneAbsoluteMode] = "AUTOTUNE2 ";
+	shortModeNames[AutotuneAbsoluteMode] = "A2";
 	modeNames[DelayMode] = "DELAY     ";
+	shortModeNames[DelayMode] = "DL";
 	modeNames[ReverbMode] = "REVERB    ";
+	shortModeNames[ReverbMode] = "RV";
 	modeNames[BitcrusherMode] = "BITCRUSHER ";
-	modeNames[DrumboxMode] = "DRUMBIES  ";
+	shortModeNames[BitcrusherMode] = "BC";
+	modeNames[DrumboxMode] = "DRUMBOX   ";
+	shortModeNames[DrumboxMode] = "DB";
 	modeNames[SynthMode] = "SYNTH     ";
+	shortModeNames[SynthMode] = "SY";
 	modeNames[DrawMode] = "          ";
+	shortModeNames[DrawMode] = "DW";
 	modeNames[LevelMode] = "LEVEL     ";
+	shortModeNames[LevelMode] = "LV";
+
+	modeNames[ChainEditMode] = ">VC -- -- ";
 }
