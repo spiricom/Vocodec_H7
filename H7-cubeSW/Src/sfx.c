@@ -6,6 +6,11 @@
 
 #define NUM_FB_DELAY_TABLES 8
 
+#define __KNOBCHECK1__ if (knobActive[0] > 0)
+#define __KNOBCHECK2__ if (knobActive[1] > 0)
+#define __KNOBCHECK3__ if (knobActive[2] > 0)
+#define __KNOBCHECK4__ if (knobActive[3] > 0)
+
 float inBuffer[2048] __ATTR_RAM_D2;
 float outBuffer[NUM_SHIFTERS][2048] __ATTR_RAM_D2;
 
@@ -25,8 +30,12 @@ tHighpass* highpass1;
 tHighpass* highpass2;
 tEnvelopeFollower* envFollowNoise;
 tEnvelopeFollower* envFollowSine;
-tSVF* lowpass;
-tSVF* highpass;
+tSVF* lowpassVoc;
+tSVF* lowpassDel;
+tSVF* lowpassRev;
+tSVF* lowpassSyn;
+tSVF* highpassDel;
+tSVF* highpassRev;
 tDelayL* delay;
 tPRCRev* rev;
 
@@ -39,7 +48,6 @@ float feedbackDelayPeriod[NUM_FB_DELAY_TABLES];
 //const float *feedbackDelayTable[NUM_FB_DELAY_TABLES] = { FB1, FB2, FB3, FB4, FB5, FB6, FB7, FB8 };
 
 int count = 0;
-
 
 /* PARAMS */
 // Vocoder
@@ -70,8 +78,8 @@ float delayFeedbackSamp = 0.0f;
 
 // Reverb
 float hpFreqRev = 20.0f;
-float lpFreqRev = 20;//000.0f;
-float t60 = 3.0f;
+float lpFreqRev = 20000.0f;
+float t60 = 5.0f;
 float revMix = 0.5f;
 
 // Bitcrusher
@@ -192,8 +200,12 @@ void SFXInit(float sr, int blocksize)
 		pshift[i] = tPitchShift_init(p, outBuffer[i], 2048);
 	}
 
-	lowpass = tSVFInit(SVFTypeLowpass, 20000.0f, 1.0f);
-	highpass = tSVFInit(SVFTypeHighpass, 20.0f, 1.0f);
+	lowpassVoc = tSVFInit(SVFTypeLowpass, 20000.0f, 1.0f);
+	lowpassDel = tSVFInit(SVFTypeLowpass, 20000.0f, 1.0f);
+	lowpassRev = tSVFInit(SVFTypeLowpass, 20000.0f, 1.0f);
+	lowpassSyn = tSVFInit(SVFTypeLowpass, 20000.0f, 1.0f);
+	highpassDel = tSVFInit(SVFTypeHighpass, 20.0f, 1.0f);
+	highpassRev = tSVFInit(SVFTypeHighpass, 20.0f, 1.0f);
 
 	rev = tPRCRevInit(1.0f);
 }
@@ -201,17 +213,21 @@ void SFXInit(float sr, int blocksize)
 void SFXVocoderFrame()
 {
 	tMPoly_setNumVoices(mpoly, numActiveVoices[VocoderMode]);
-	if ((modeChain[chainIndex] == VocoderMode) && (chainLock == Locked))
+	if (modeChain[chainIndex] == VocoderMode)
 	{
-		glideTimeVoc = (knobVals[0] * 999.0f) + 5.0f;
-		lpFreqVoc = ((knobVals[2]) * 17600.0f) + 400.0f;
-		for (int i = 0; i < tMPoly_getNumVoices(mpoly); i++)
+		__KNOBCHECK1__ { glideTimeVoc = (knobVals[0] * 999.0f) + 5.0f; }
+
+		__KNOBCHECK3__ { lpFreqVoc = ((knobVals[2]) * 17600.0f) + 400.0f; }
+		__KNOBCHECK4__
 		{
-			detuneMaxVoc = (knobVals[3]) * freq[i] * 0.05f;
+			for (int i = 0; i < tMPoly_getNumVoices(mpoly); i++)
+			{
+				detuneMaxVoc = (knobVals[3]) * freq[i] * 0.05f;
+			}
 		}
 	}
 	tMPoly_setPitchGlideTime(mpoly, glideTimeVoc);
-	tSVFSetFreq(lowpass, lpFreqVoc);
+	tSVFSetFreq(lowpassVoc, lpFreqVoc);
 	for (int i = 0; i < tMPoly_getNumVoices(mpoly); i++)
 	{
 		tRampSetDest(ramp[i], (tMPoly_getVelocity(mpoly, i) > 0));
@@ -242,7 +258,7 @@ int32_t SFXVocoderTick(int32_t input)
 
 	output *= INV_NUM_OSC * 0.5f;
 	output = tTalkboxTick(vocoder, output, sample);
-	output = tSVFTick(lowpass, output);
+	output = tSVFTick(lowpassVoc, output);
 	output = tanhf(output);
 
 	return (int32_t) (output * TWO_TO_31);
@@ -250,10 +266,13 @@ int32_t SFXVocoderTick(int32_t input)
 
 void SFXFormantFrame()
 {
-	if ((modeChain[chainIndex] == FormantShiftMode) && (chainLock == Locked))
+	if (modeChain[chainIndex] == FormantShiftMode)
 	{
-		formantKnob = knobVals[2];
-		formantShiftFactor = (formantKnob * 2.0f) - 1.0f;
+		__KNOBCHECK3__
+		{
+			formantKnob = knobVals[2];
+			formantShiftFactor = (formantKnob * 2.0f) - 1.0f;
+		}
 	}
 }
 int32_t SFXFormantTick(int32_t input)
@@ -270,17 +289,16 @@ int32_t SFXFormantTick(int32_t input)
 
 void SFXPitchShiftFrame()
 {
-	if ((modeChain[chainIndex] == PitchShiftMode) && (chainLock == Locked))
+	if (modeChain[chainIndex] == PitchShiftMode)
 	{
-		pitchFactor = knobVals[2] * 3.5f + 0.50f;
-		formantShiftFactorPS = (knobVals[1] * 2.0f) - 1.0f;
+		__KNOBCHECK2__ { formantShiftFactorPS = (knobVals[1] * 2.0f) - 1.0f; }
+		__KNOBCHECK3__ { pitchFactor = knobVals[2] * 3.5f + 0.50f; }
 	}
 	tPitchShift_setPitchFactor(pshift[0], pitchFactor);
 }
 
 int32_t SFXPitchShiftTick(int32_t input)
 {
-
 	float sample = 0.0f;
 	float output = 0.0f;
 
@@ -300,7 +318,7 @@ int32_t SFXPitchShiftTick(int32_t input)
 
 void SFXAutotuneNearestFrame()
 {
-	if ((modeChain[chainIndex] == AutotuneNearestMode) && (chainLock == Locked))
+	if (modeChain[chainIndex] == AutotuneNearestMode)
 	{
 
 	}
@@ -326,9 +344,12 @@ int32_t SFXAutotuneNearestTick(int32_t input)
 void SFXAutotuneAbsoluteFrame()
 {
 	tMPoly_setNumVoices(mpoly, numActiveVoices[AutotuneAbsoluteMode]);
-	if ((modeChain[chainIndex] == AutotuneAbsoluteMode) && (chainLock == Locked))
+	__KNOBCHECK1__
 	{
-		glideTimeAuto = (knobVals[0] * 999.0f) + 5.0f;
+		if (modeChain[chainIndex] == AutotuneAbsoluteMode)
+		{
+			glideTimeAuto = (knobVals[0] * 999.0f) + 5.0f;
+		}
 	}
 	tMPoly_setPitchGlideTime(mpoly, glideTimeAuto);
 	for (int i = 0; i < tMPoly_getNumVoices(mpoly); ++i)
@@ -361,21 +382,28 @@ int32_t SFXAutotuneAbsoluteTick(int32_t input)
 
 void SFXDelayFrame()
 {
-	if ((modeChain[chainIndex] == DelayMode) && (chainLock == Locked))
+	if (modeChain[chainIndex] == DelayMode)
 	{
-		newFeedback = interpolateFeedback(knobVals[3]);
-		newDelay = interpolateDelayControl(1.0f - knobVals[2]);
+		__KNOBCHECK1__
+		{
+			hpFreqDel = ((knobVals[0]) * 10000.0f) + 10.0f;
+			if (hpFreqDel > lpFreqDel) hpFreqDel = lpFreqDel;
+		}
+		__KNOBCHECK2__
+		{
+			lpFreqDel = ((knobVals[1]) * 19900.0f) + 100.0f;
+			if (lpFreqDel < hpFreqDel) lpFreqDel = hpFreqDel;
+		}
+		__KNOBCHECK3__ { newDelay = interpolateDelayControl(1.0f - knobVals[2]); }
+		__KNOBCHECK4__ { newFeedback = interpolateFeedback(knobVals[3]); }
 
-		lpFreqDel = ((knobVals[1]) * 19900.0f) + 100.0f;
-		if (lpFreqDel < hpFreqDel) lpFreqDel = hpFreqDel;
-		hpFreqDel = ((knobVals[0]) * 10000.0f) + 10.0f;
-		if (hpFreqDel > lpFreqDel) hpFreqDel = lpFreqDel;
+
 	}
 	tRampSetDest(rampFeedback, newFeedback);
 	tRampSetDest(rampDelayFreq, newDelay);
 
-	tSVFSetFreq(lowpass, lpFreqDel);
-	tSVFSetFreq(highpass, hpFreqDel);
+	tSVFSetFreq(lowpassDel, lpFreqDel);
+	tSVFSetFreq(highpassDel, hpFreqDel);
 }
 
 int32_t SFXDelayTick(int32_t input)
@@ -391,8 +419,8 @@ int32_t SFXDelayTick(int32_t input)
 
 	output = tDelayLTick(delay, output);
 
-	output = tSVFTick(lowpass, output);
-	output = tSVFTick(highpass, output);
+	output = tSVFTick(lowpassDel, output);
+	output = tSVFTick(highpassDel, output);
 
 	delayFeedbackSamp = output;
 
@@ -403,17 +431,24 @@ int32_t SFXDelayTick(int32_t input)
 
 void SFXReverbFrame()
 {
-	if ((modeChain[chainIndex] == ReverbMode) && (chainLock == Locked))
+	if (modeChain[chainIndex] == ReverbMode)
 	{
-		t60 = knobVals[2] * 10.0f;
-		revMix = knobVals[3] * 1.0f;
-		lpFreqRev = ((knobVals[1]) * 19900.0f) + 100.0f;
-		if (lpFreqRev < hpFreqRev) lpFreqRev = hpFreqRev;
-		hpFreqRev = ((knobVals[0]) * 10000.0f) + 10.0f;
-		if (hpFreqRev > lpFreqRev) hpFreqRev = lpFreqRev;
+		__KNOBCHECK1__
+		{
+			hpFreqRev = ((knobVals[0]) * 10000.0f) + 10.0f;
+			if (hpFreqRev > lpFreqRev) hpFreqRev = lpFreqRev;
+		}
+		__KNOBCHECK2__
+		{
+			lpFreqRev = ((knobVals[1]) * 19900.0f) + 100.0f;
+			if (lpFreqRev < hpFreqRev) lpFreqRev = hpFreqRev;
+		}
+		__KNOBCHECK3__ { t60 = knobVals[2] * 10.0f; }
+		__KNOBCHECK4__ { revMix = knobVals[3] * 1.0f; }
+
 	}
-	tSVFSetFreq(lowpass, lpFreqRev);
-	tSVFSetFreq(highpass, hpFreqRev);
+	tSVFSetFreq(lowpassRev, lpFreqRev);
+	tSVFSetFreq(highpassRev, hpFreqRev);
 	tPRCRevSetT60(rev, t60);
 	tPRCRevSetMix(rev, revMix);
 }
@@ -427,18 +462,18 @@ int32_t SFXReverbTick(int32_t input)
 
 	output = tPRCRevTick(rev, sample);
 
-	output = tSVFTick(lowpass, output);
-	output = tSVFTick(highpass, output);
+	output = tSVFTick(lowpassRev, output);
+	output = tSVFTick(highpassRev, output);
 
 	return (int32_t) (output * TWO_TO_31);
 }
 
 void SFXBitcrusherFrame()
 {
-	if ((modeChain[chainIndex] == BitcrusherMode) && (chainLock == Locked))
+	if (modeChain[chainIndex] == BitcrusherMode)
 	{
-		bitDepth = (((int) (knobVals[3] * 16)) > 0) ? (int) (knobVals[3] * 16) : 1;
-		rateRatio = (((int) (knobVals[2] * 128)) > 0) ? (int) (knobVals[2] * 128) : 1;
+		__KNOBCHECK3__ { rateRatio = (((int) (knobVals[2] * 128)) > 0) ? (int) (knobVals[2] * 128) : 1; }
+		__KNOBCHECK4__ { bitDepth = (((int) (knobVals[3] * 16)) > 0) ? (int) (knobVals[3] * 16) : 1; }
 	}
 }
 int32_t SFXBitcrusherTick(int32_t input)
@@ -471,12 +506,12 @@ int32_t SFXBitcrusherTick(int32_t input)
 
 void SFXDrumboxFrame()
 {
-	if ((modeChain[chainIndex] == DrumboxMode) && (chainLock == Locked))
+	if (modeChain[chainIndex] == DrumboxMode)
 	{
-		newFeedbackDB = interpolateFeedback(knobVals[3]);
-		newDelayDB = interpolateDelayControl(1.0f - knobVals[2]);
-		newFreqDB =  ((knobVals[1]) * 4.0f) * ((1.0f / newDelayDB) * oops.sampleRate);
-		decayCoeff = adcVals[0] >> 4;
+		__KNOBCHECK1__ { decayCoeff = adcVals[0] >> 4; }
+		__KNOBCHECK2__ { newFreqDB =  ((knobVals[1]) * 4.0f) * ((1.0f / newDelayDB) * oops.sampleRate); }
+		__KNOBCHECK3__ { newDelayDB = interpolateDelayControl(1.0f - knobVals[2]); }
+		__KNOBCHECK4__ { newFeedbackDB = interpolateFeedback(knobVals[3]); }
 	}
 	tRampSetDest(rampFeedback, newFeedbackDB);
 	tRampSetDest(rampDelayFreq, newDelayDB);
@@ -513,20 +548,20 @@ int32_t SFXDrumboxTick(int32_t input)
 void SFXSynthFrame()
 {
 	tMPoly_setNumVoices(mpoly, numActiveVoices[SynthMode]);
-	if ((modeChain[chainIndex] == SynthMode) && (chainLock == Locked))
+	if (modeChain[chainIndex] == SynthMode)
 	{
-		glideTimeSynth = (knobVals[0] * 999.0f) + 5.0f;
-
-		synthGain = knobVals[1];
-
-		lpFreqSynth = ((knobVals[2]) * 17600.0f) + 400.0f;
-
-		for (int i = 0; i < tMPoly_getNumVoices(mpoly); i++)
+		__KNOBCHECK1__ { glideTimeSynth = (knobVals[0] * 999.0f) + 5.0f; }
+		__KNOBCHECK2__ { synthGain = knobVals[1]; }
+		__KNOBCHECK3__ { lpFreqSynth = ((knobVals[2]) * 17600.0f) + 400.0f; }
+		__KNOBCHECK4__
 		{
-			detuneMaxSynth = (knobVals[3]) * freq[i] * 0.05f;
+			for (int i = 0; i < tMPoly_getNumVoices(mpoly); i++)
+			{
+				detuneMaxSynth = (knobVals[3]) * freq[i] * 0.05f;
+			}
 		}
 	}
-	tSVFSetFreq(lowpass, lpFreqSynth);
+	tSVFSetFreq(lowpassSyn, lpFreqSynth);
 	tMPoly_setPitchGlideTime(mpoly, glideTimeSynth);
 	for (int i = 0; i < tMPoly_getNumVoices(mpoly); i++)
 	{
@@ -554,7 +589,7 @@ int32_t SFXSynthTick(int32_t input)
 		}
 	}
 
-	sample = tSVFTick(lowpass, sample) * INV_NUM_OSC * 0.5f;
+	sample = tSVFTick(lowpassSyn, sample) * INV_NUM_OSC * 0.5f;
 
 	output = tanhf(sample * synthGain); // before or after clip?
 
@@ -573,10 +608,10 @@ int32_t SFXDrawTick(int32_t input)
 
 void SFXLevelFrame()
 {
-	if ((modeChain[chainIndex] == LevelMode) && (chainLock == Locked))
+	if (modeChain[chainIndex] == LevelMode)
 	{
-		inputLevel = knobVals[0] * 3.0f;
-		outputLevel = knobVals[1] * 3.0f;
+		__KNOBCHECK1__ { inputLevel = knobVals[0] * 3.0f; }
+		__KNOBCHECK2__ { outputLevel = knobVals[1] * 3.0f; }
 	}
 }
 int32_t SFXLevelTick(int32_t input)

@@ -4,6 +4,7 @@
 
 #define CHAIN_LENGTH 3
 #define LINE_LENGTH 10
+#define HYSTERESIS 0.1f
 
 typedef enum LCDModeType
 {
@@ -22,12 +23,12 @@ typedef enum VocodecButton
 	ButtonNil
 } VocodecButton;
 
-typedef enum UpDownMode
+typedef enum KnobInteraction
 {
-	ModeChange = 0,
-	ParameterChange,
-	NilChange
-} UpDownMode;
+	Hysteresis = 0,
+	Matching,
+	NilInteraction
+} KnobInteraction;
 
 typedef enum VocodecMode
 {
@@ -81,6 +82,8 @@ extern GFX theGFX;
 extern uint16_t* adcVals;
 extern float knobVals[NUM_KNOBS];
 extern tRamp* knobRamps[NUM_KNOBS];
+extern uint8_t knobActive[NUM_KNOBS];
+
 
 typedef enum _OLEDLine
 {
@@ -94,6 +97,8 @@ void UIInit(uint16_t* myADCArray);
 
 void buttonCheck(void);
 void processKnobs(void);
+void knobCheck(void);
+void resetKnobs(void);
 
 void OLEDdrawPoint(int16_t x, int16_t y, uint16_t color);
 void OLEDdrawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color);

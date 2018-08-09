@@ -7,6 +7,9 @@
 GFX theGFX;
 uint16_t* adcVals;
 float knobVals[NUM_KNOBS];
+uint8_t knobActive[NUM_KNOBS];
+float knobValsOnModeChange[NUM_KNOBS];
+float knobValsPerMode[ModeCount][NUM_KNOBS];
 
 uint8_t buttonsHeld[NUM_BUTTONS];
 
@@ -22,6 +25,8 @@ static void aButtonWasPressed(void);
 static void bButtonWasPressed(void);
 static void buttonWasReleased(VocodecButton button);
 static void writeScreen(void);
+static void setAvailableModes(void);
+static void resetKnobs(void);
 
 uint8_t xPos;
 uint8_t yPos;
@@ -35,7 +40,7 @@ VocodecScreen screen = HomeScreen;
 VocodecMode modeChain[CHAIN_LENGTH];
 LockState chainLock = Locked;
 uint8_t chainIndex = 0;
-uint8_t modeAvail[ModeCount];
+uint8_t modeAvail[CHAIN_LENGTH][ModeCount];
 VocodecButton lastButtonPressed = ButtonNil;
 
 void UIInit(uint16_t* myADCArray)
@@ -51,13 +56,10 @@ void UIInit(uint16_t* myADCArray)
 		modeChain[i] = ModeNil;
 	}
 	modeChain[0] = VocoderMode;
+	setAvailableModes();
 
 	writeScreen();
 
-	for (int i = 0; i < ModeCount; i++)
-	{
-		modeAvail[i] = 1;
-	}
 	for(int i = 0; i < NUM_KNOBS; i++)
 	{
 		knobRamps[i] = tRampInit(100.0f, 1);
@@ -70,7 +72,9 @@ void UIInit(uint16_t* myADCArray)
 		val = (val - 0.025f) / 0.95f;
 		tRampSetDest(knobRamps[i], val);
 		tRampSetVal(knobRamps[i], val);
+		knobVals[i] = val;
 	}
+	resetKnobs();
 }
 
 void UIDrawFrame(void)
@@ -134,6 +138,16 @@ void processKnobs(void)
 	}
 }
 
+void knobCheck(void)
+{
+	float diff;
+	for(int i = 0; i < NUM_KNOBS; ++i)
+	{
+		diff = fabsf(knobVals[i] - knobValsOnModeChange[i]);
+		if (diff > HYSTERESIS) knobActive[i] = 1;
+	}
+}
+
 #define ASCII_NUM_OFFSET 48
 static void writeScreen(void)
 {
@@ -160,70 +174,108 @@ static void writeScreen(void)
 			{
 				OLEDwriteIntLine(numActiveVoices[modeChain[chainIndex]], 2, SecondLine);
 			}
+			else OLEDclearLine(SecondLine);
 		}
 		else
 		{
-			homeScreenString[9] = 'U';
+			homeScreenString[9] = '{';
 			OLEDwriteLine(modeNames[modeChain[chainIndex]], 10, SecondLine);
 		}
 		OLEDwriteLine(homeScreenString, 10, FirstLine);
+	}
+	else if (screen == EditScreen)
+	{
+		if (modeChain[chainIndex] == DrawMode) return;
+		OLEDwriteLine(modeNames[modeChain[chainIndex]], 10, FirstLine);
+		if (chainLock > 0) OLEDwriteString("}", 1, 112, FirstLine);
+		else OLEDwriteString("{", 1, 112, FirstLine);
+		OLEDclearLine(SecondLine);
+		if (modeChain[chainIndex] == AutotuneNearestMode)
+		{
+			if (autotuneLock > 0) OLEDwriteLine("LOCK", 4, SecondLine);
+		}
+		else if (modeChain[chainIndex] == AutotuneAbsoluteMode || modeChain[chainIndex] == VocoderMode || modeChain[chainIndex] == SynthMode)
+		{
+			OLEDwriteIntLine(numActiveVoices[modeChain[chainIndex]], 2, SecondLine);
+		}
 	}
 }
 
 static void buttonWasPressed(VocodecButton button)
 {
 	buttonsHeld[button] = 1;
-	lastButtonPressed = button;
 	if (button == ButtonUp) upButtonWasPressed();
 	else if (button == ButtonDown) downButtonWasPressed();
 	else if (button == ButtonA) aButtonWasPressed();
 	else if (button == ButtonB) bButtonWasPressed();
-
-	writeScreen();
+	lastButtonPressed = button;
 }
 
 static void upButtonWasPressed()
 {
 	if (screen == HomeScreen)
 	{
-		if (chainLock == Locked)
+		if (buttonsHeld[ButtonA] > 0) return;
+	}
+	else if (screen == EditScreen)
+	{
+		if (buttonsHeld[ButtonA] > 0)
 		{
-			if (modeChain[chainIndex] == AutotuneNearestMode)
+			screen = HomeScreen;
+			modeAvail[0][ModeNil] = 1;
+			modeAvail[1][ModeNil] = 1;
+			modeAvail[2][ModeNil] = 1;
+			writeScreen();
+			return;
+		}
+	}
+	if (chainLock == Locked)
+	{
+		if (modeChain[chainIndex] == AutotuneNearestMode)
+		{
+			int notesHeld = 0;
+			for (int i = 0; i < 12; ++i)
 			{
-				int notesHeld = 0;
+				if (chordArray[i] > 0) { notesHeld = 1; }
+			}
+
+			if (notesHeld)
+			{
 				for (int i = 0; i < 12; ++i)
 				{
-					if (chordArray[i] > 0) { notesHeld = 1; }
+					lockArray[i] = chordArray[i];
 				}
+			}
 
-				if (notesHeld)
-				{
-					for (int i = 0; i < 12; ++i)
-					{
-						lockArray[i] = chordArray[i];
-					}
-				}
-
-				autotuneLock = 1;
-			}
-			if (modeChain[chainIndex] == AutotuneAbsoluteMode)
-			{
-				if (numActiveVoices[modeChain[chainIndex]] < NUM_SHIFTERS) numActiveVoices[modeChain[chainIndex]]++;
-				else numActiveVoices[modeChain[chainIndex]] = 1;
-				//else numActiveVoices[mode] = NUM_SHIFTERS;
-			}
-			else if (modeChain[chainIndex] == VocoderMode || modeChain[chainIndex] == SynthMode)
-			{
-				if (numActiveVoices[modeChain[chainIndex]] < NUM_VOICES) numActiveVoices[modeChain[chainIndex]]++;
-				else numActiveVoices[modeChain[chainIndex]] = 1;
-				//else numActiveVoices[mode] = NUM_VOICES;
-			}
+			autotuneLock = 1;
+			writeScreen();
 		}
-		else
+		if (modeChain[chainIndex] == AutotuneAbsoluteMode)
+		{
+			if (numActiveVoices[modeChain[chainIndex]] < NUM_SHIFTERS) numActiveVoices[modeChain[chainIndex]]++;
+			else numActiveVoices[modeChain[chainIndex]] = 1;
+			//else numActiveVoices[mode] = NUM_SHIFTERS;
+			writeScreen();
+		}
+		else if (modeChain[chainIndex] == VocoderMode || modeChain[chainIndex] == SynthMode)
+		{
+			if (numActiveVoices[modeChain[chainIndex]] < NUM_VOICES) numActiveVoices[modeChain[chainIndex]]++;
+			else numActiveVoices[modeChain[chainIndex]] = 1;
+			//else numActiveVoices[mode] = NUM_VOICES;
+			writeScreen();
+		}
+	}
+	else
+	{
+		resetKnobs();
+		for (int i = 0; i < ModeCount; i++)
 		{
 			if (modeChain[chainIndex] < ModeNil) modeChain[chainIndex]++;
-			else modeChain[chainIndex] = VocoderMode;
+			else modeChain[chainIndex] = 0;
+			if (modeAvail[chainIndex][modeChain[chainIndex]] > 0) break;
 		}
+		setAvailableModes();
+		writeScreen();
 	}
 }
 
@@ -231,44 +283,70 @@ static void downButtonWasPressed()
 {
 	if (screen == HomeScreen)
 	{
-		if (chainLock == Locked)
+		if (buttonsHeld[ButtonA] > 0)
 		{
-			if (modeChain[chainIndex] == AutotuneNearestMode)
+			if (modeChain[chainIndex] != ModeNil)
 			{
-				int notesHeld = 0;
+				screen = EditScreen;
+				modeAvail[0][ModeNil] = 0;
+				modeAvail[1][ModeNil] = 0;
+				modeAvail[2][ModeNil] = 0;
+				writeScreen();
+			}
+			return;
+		}
+	}
+	else if (screen == EditScreen)
+	{
+		if (buttonsHeld[ButtonA] > 0) return;
+	}
+	if (chainLock == Locked)
+	{
+		if (modeChain[chainIndex] == AutotuneNearestMode)
+		{
+			int notesHeld = 0;
+			for (int i = 0; i < 12; ++i)
+			{
+				if (chordArray[i] > 0) { notesHeld = 1; }
+			}
+
+			if (notesHeld)
+			{
 				for (int i = 0; i < 12; ++i)
 				{
-					if (chordArray[i] > 0) { notesHeld = 1; }
+					lockArray[i] = chordArray[i];
 				}
+			}
 
-				if (notesHeld)
-				{
-					for (int i = 0; i < 12; ++i)
-					{
-						lockArray[i] = chordArray[i];
-					}
-				}
-
-				autotuneLock = 0;
-			}
-			if (modeChain[chainIndex] == AutotuneAbsoluteMode)
-			{
-				if (numActiveVoices[modeChain[chainIndex]] > 1) numActiveVoices[modeChain[chainIndex]]--;
-				else numActiveVoices[modeChain[chainIndex]] = NUM_SHIFTERS;
-				//else activeShifters = 1;
-			}
-			else if (modeChain[chainIndex] == VocoderMode || modeChain[chainIndex] == SynthMode)
-			{
-				if (numActiveVoices[modeChain[chainIndex]] > 1) numActiveVoices[modeChain[chainIndex]]--;
-				else numActiveVoices[modeChain[chainIndex]] = NUM_VOICES;
-				//else activeVoices = 1;
-			}
+			autotuneLock = 0;
+			writeScreen();
 		}
-		else
+		else if (modeChain[chainIndex] == AutotuneAbsoluteMode)
+		{
+			if (numActiveVoices[modeChain[chainIndex]] > 1) numActiveVoices[modeChain[chainIndex]]--;
+			else numActiveVoices[modeChain[chainIndex]] = NUM_SHIFTERS;
+			//else activeShifters = 1;
+			writeScreen();
+		}
+		else if (modeChain[chainIndex] == VocoderMode || modeChain[chainIndex] == SynthMode)
+		{
+			if (numActiveVoices[modeChain[chainIndex]] > 1) numActiveVoices[modeChain[chainIndex]]--;
+			else numActiveVoices[modeChain[chainIndex]] = NUM_VOICES;
+			//else activeVoices = 1;
+			writeScreen();
+		}
+	}
+	else
+	{
+		resetKnobs();
+		for (int i = 0; i < ModeCount; i++)
 		{
 			if (modeChain[chainIndex] > 0) modeChain[chainIndex]--;
 			else modeChain[chainIndex] = ModeNil;
+			if (modeAvail[chainIndex][modeChain[chainIndex]] > 0) break;
 		}
+		setAvailableModes();
+		writeScreen();
 	}
 }
 
@@ -281,8 +359,10 @@ static void bButtonWasPressed()
 {
 	if (screen == HomeScreen)
 	{
+		resetKnobs();
 		if (chainIndex < (CHAIN_LENGTH - 1)) chainIndex++;
 		else chainIndex = 0;
+		writeScreen();
 	}
 }
 
@@ -429,10 +509,136 @@ static void initModeNames()
 	shortModeNames[DrumboxMode] = "DB";
 	modeNames[SynthMode] = "SYNTH     ";
 	shortModeNames[SynthMode] = "SY";
-	modeNames[DrawMode] = "          ";
+	modeNames[DrawMode] = "DRAW      ";
 	shortModeNames[DrawMode] = "DW";
 	modeNames[LevelMode] = "LEVEL     ";
 	shortModeNames[LevelMode] = "LV";
 	modeNames[ModeNil] = "          ";
 	shortModeNames[ModeNil] = "--";
+}
+
+static void setAvailableModes(void)
+{
+	for (int i = 0; i < CHAIN_LENGTH; i++)
+	{
+		for (int j = 0; j < ModeCount; j++)
+		{
+			modeAvail[i][j] = 1;
+		}
+	}
+	for (int i = 0; i < CHAIN_LENGTH; i++)
+	{
+		if (modeChain[i] == VocoderMode)
+		{
+			for (int j = 1; j < CHAIN_LENGTH; j++)
+			{
+				modeAvail[(i+j)%3][VocoderMode] = 0;
+				modeAvail[(i+j)%3][AutotuneNearestMode] = 0;
+				modeAvail[(i+j)%3][AutotuneAbsoluteMode] = 0;
+				modeAvail[(i+j)%3][SynthMode] = 0;
+			}
+		}
+		else if (modeChain[i] == FormantShiftMode)
+		{
+			for (int j = 1; j < CHAIN_LENGTH; j++)
+			{
+				modeAvail[(i+j)%3][FormantShiftMode] = 0;
+			}
+		}
+		else if (modeChain[i] == PitchShiftMode)
+		{
+			for (int j = 1; j < CHAIN_LENGTH; j++)
+			{
+				modeAvail[(i+j)%3][PitchShiftMode] = 0;
+				modeAvail[(i+j)%3][AutotuneNearestMode] = 0;
+				modeAvail[(i+j)%3][AutotuneAbsoluteMode] = 0;
+			}
+		}
+		else if (modeChain[i] == AutotuneNearestMode)
+		{
+			for (int j = 1; j < CHAIN_LENGTH; j++)
+			{
+				modeAvail[(i+j)%3][VocoderMode] = 0;
+				modeAvail[(i+j)%3][PitchShiftMode] = 0;
+				modeAvail[(i+j)%3][AutotuneNearestMode] = 0;
+				modeAvail[(i+j)%3][AutotuneAbsoluteMode] = 0;
+				modeAvail[(i+j)%3][SynthMode] = 0;
+			}
+		}
+		else if (modeChain[i] == AutotuneAbsoluteMode)
+		{
+			for (int j = 1; j < CHAIN_LENGTH; j++)
+			{
+				modeAvail[(i+j)%3][VocoderMode] = 0;
+				modeAvail[(i+j)%3][PitchShiftMode] = 0;
+				modeAvail[(i+j)%3][AutotuneNearestMode] = 0;
+				modeAvail[(i+j)%3][AutotuneAbsoluteMode] = 0;
+				modeAvail[(i+j)%3][SynthMode] = 0;
+			}
+		}
+		else if (modeChain[i] == DelayMode)
+		{
+			for (int j = 1; j < CHAIN_LENGTH; j++)
+			{
+				modeAvail[(i+j)%3][DelayMode] = 0;
+				modeAvail[(i+j)%3][DrumboxMode] = 0;
+			}
+		}
+		else if (modeChain[i] == ReverbMode)
+		{
+			for (int j = 1; j < CHAIN_LENGTH; j++)
+			{
+				modeAvail[(i+j)%3][ReverbMode] = 0;
+			}
+		}
+		else if (modeChain[i] == BitcrusherMode)
+		{
+			for (int j = 1; j < CHAIN_LENGTH; j++)
+			{
+				modeAvail[(i+j)%3][BitcrusherMode] = 0;
+			}
+		}
+		else if (modeChain[i] == DrumboxMode)
+		{
+			for (int j = 1; j < CHAIN_LENGTH; j++)
+			{
+				modeAvail[(i+j)%3][DelayMode] = 0;
+				modeAvail[(i+j)%3][DrumboxMode] = 0;
+			}
+		}
+		else if (modeChain[i] == SynthMode)
+		{
+			for (int j = 1; j < CHAIN_LENGTH; j++)
+			{
+				modeAvail[(i+j)%3][VocoderMode] = 0;
+				modeAvail[(i+j)%3][AutotuneNearestMode] = 0;
+				modeAvail[(i+j)%3][AutotuneAbsoluteMode] = 0;
+				modeAvail[(i+j)%3][SynthMode] = 0;
+			}
+		}
+		else if (modeChain[i] == DrawMode)
+		{
+			for (int j = 1; j < CHAIN_LENGTH; j++)
+			{
+				modeAvail[(i+j)%3][DrawMode] = 0;
+			}
+		}
+		else if (modeChain[i] == LevelMode)
+		{
+			for (int j = 1; j < CHAIN_LENGTH; j++)
+			{
+				modeAvail[(i+j)%3][LevelMode] = 0;
+			}
+		}
+	}
+}
+
+static void resetKnobs(void)
+{
+	for (int i = 0; i < NUM_KNOBS; i++)
+	{
+		knobValsOnModeChange[i] = knobVals[i];
+		if (knobActive[i] > 0) knobValsPerMode[modeChain[chainIndex]][i] = knobVals[i];
+		knobActive[i] = 0;
+	}
 }
