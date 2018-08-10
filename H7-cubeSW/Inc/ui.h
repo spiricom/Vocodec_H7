@@ -4,7 +4,12 @@
 
 #define CHAIN_LENGTH 3
 #define LINE_LENGTH 10
-#define HYSTERESIS 0.1f
+#define HYSTERESIS 0.05f
+
+#define __KNOBCHECK1__ if (knobActive[0] > 0)
+#define __KNOBCHECK2__ if (knobActive[1] > 0)
+#define __KNOBCHECK3__ if (knobActive[2] > 0)
+#define __KNOBCHECK4__ if (knobActive[3] > 0)
 
 typedef enum LCDModeType
 {
@@ -38,9 +43,9 @@ typedef enum VocodecMode
 	AutotuneNearestMode,
 	AutotuneAbsoluteMode,
 	DelayMode,
+	DrumboxMode,
 	ReverbMode,
 	BitcrusherMode,
-	DrumboxMode,
 	SynthMode,
 	DrawMode,
 	LevelMode,
@@ -65,10 +70,8 @@ typedef enum LockState
 
 extern VocodecMode modeChain[CHAIN_LENGTH];
 extern uint8_t chainIndex;
-extern LockState chainLock;
+extern uint8_t indexChained[CHAIN_LENGTH];
 extern VocodecScreen screen;
-
-uint8_t oled_buffer[32];
 
 #define NUM_BUTTONS 16
 #define NUM_KNOBS 4
@@ -98,14 +101,13 @@ void UIInit(uint16_t* myADCArray);
 void buttonCheck(void);
 void processKnobs(void);
 void knobCheck(void);
-void resetKnobs(void);
 
 void OLEDdrawPoint(int16_t x, int16_t y, uint16_t color);
 void OLEDdrawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color);
 void OLEDdrawCircle(int16_t x0, int16_t y0, int16_t r, uint16_t color);
 void OLEDclear();
 void OLEDclearLine(OLEDLine line);
-void OLEDwriteString(char* myCharArray, uint8_t arrayLength, uint8_t startCursor, OLEDLine line);
+void OLEDwriteString(char* myCharArray, uint8_t arrayLength, uint8_t startCursor, OLEDLine line, uint8_t invert);
 void OLEDwriteLine(char* myCharArray, uint8_t arrayLength, OLEDLine line);
 void OLEDwriteInt(uint32_t myNumber, uint8_t numDigits, uint8_t startCursor, OLEDLine line);
 void OLEDwriteIntLine(uint32_t myNumber, uint8_t numDigits, OLEDLine line);

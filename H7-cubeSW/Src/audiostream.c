@@ -82,28 +82,52 @@ int numSamples = AUDIO_FRAME_SIZE;
 void audioFrame(uint16_t buffer_offset)
 {
 	int sample = 0;
-	for (int i = 0; i < CHAIN_LENGTH; i++)
+
+	if (indexChained[chainIndex] == 0)
 	{
-		if (modeChain[i] != ModeNil)
+		if (modeChain[chainIndex] != ModeNil)
 		{
-			frameFunctions[modeChain[i]]();
+			frameFunctions[modeChain[chainIndex]]();
+		}
+		for (int cc=0; cc < numSamples; cc++)
+		{
+			for (int i = 0; i < NUM_KNOBS; i++)
+			{
+				knobVals[i] = tRampTick(knobRamps[i]);
+			}
+			sample = (int) (audioInBuffer[buffer_offset+(cc*2)] * inputLevel);
+			if (modeChain[chainIndex] != ModeNil)
+			{
+				sample = tickFunctions[modeChain[chainIndex]](sample);
+			}
+			audioOutBuffer[buffer_offset + (cc*2)] = (int) (sample * outputLevel);
 		}
 	}
-	for (int cc=0; cc < numSamples; cc++)
+	else if (indexChained[chainIndex] > 0)
 	{
-		for (int i = 0; i < NUM_KNOBS; i++)
-		{
-			knobVals[i] = tRampTick(knobRamps[i]);
-		}
-		sample = (int) (audioInBuffer[buffer_offset+(cc*2)] * inputLevel);
 		for (int i = 0; i < CHAIN_LENGTH; i++)
 		{
-			if (modeChain[i] != ModeNil)
+			if (modeChain[i] != ModeNil && indexChained[i] > 0)
 			{
-				sample = tickFunctions[modeChain[i]](sample);
+				frameFunctions[modeChain[i]]();
 			}
 		}
-		audioOutBuffer[buffer_offset + (cc*2)] = (int) (sample * outputLevel);
+		for (int cc=0; cc < numSamples; cc++)
+		{
+			for (int i = 0; i < NUM_KNOBS; i++)
+			{
+				knobVals[i] = tRampTick(knobRamps[i]);
+			}
+			sample = (int) (audioInBuffer[buffer_offset+(cc*2)] * inputLevel);
+			for (int i = 0; i < CHAIN_LENGTH; i++)
+			{
+				if (modeChain[i] != ModeNil && indexChained[i] > 0)
+				{
+					sample = tickFunctions[modeChain[i]](sample);
+				}
+			}
+			audioOutBuffer[buffer_offset + (cc*2)] = (int) (sample * outputLevel);
+		}
 	}
 }
 

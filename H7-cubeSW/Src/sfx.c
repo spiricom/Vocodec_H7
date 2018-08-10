@@ -6,11 +6,6 @@
 
 #define NUM_FB_DELAY_TABLES 8
 
-#define __KNOBCHECK1__ if (knobActive[0] > 0)
-#define __KNOBCHECK2__ if (knobActive[1] > 0)
-#define __KNOBCHECK3__ if (knobActive[2] > 0)
-#define __KNOBCHECK4__ if (knobActive[3] > 0)
-
 float inBuffer[2048] __ATTR_RAM_D2;
 float outBuffer[NUM_SHIFTERS][2048] __ATTR_RAM_D2;
 
@@ -589,9 +584,9 @@ int32_t SFXSynthTick(int32_t input)
 		}
 	}
 
-	sample = tSVFTick(lowpassSyn, sample) * INV_NUM_OSC * 0.5f;
+	sample = tSVFTick(lowpassSyn, sample) * INV_NUM_OSC * 0.5;
 
-	output = tanhf(sample * synthGain); // before or after clip?
+	output = tanhf(sample * synthGain); // gain before or after clip?
 
 	return ((int32_t) (output * TWO_TO_31) + input);
 }

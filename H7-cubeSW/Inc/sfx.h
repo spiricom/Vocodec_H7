@@ -19,15 +19,54 @@
 extern int lockArray[12];
 extern int chordArray[12];
 extern float noteperiod;
-extern float pitchFactor;
-extern float formantKnob;
-extern float newFeedback;
-extern float newDelay;
-extern float newFeedbackDB;
-extern float newDelayDB;
-extern int bitDepth;
-extern int rateRatio;
 
+/* PARAMS */
+// Vocoder
+extern float glideTimeVoc;
+extern float lpFreqVoc;
+extern float detuneMaxVoc;
+
+// Formant
+extern float formantKnob, formantShiftFactor;
+
+// PitchShift
+extern float pitchFactor;
+extern float formantShiftFactorPS;
+
+// Autotune1
+
+// Autotune2
+extern float glideTimeAuto;
+
+// Delay
+extern float hpFreqDelf;
+extern float lpFreqDel;
+extern float newDelay;
+extern float newFeedback;
+
+// Reverb
+extern float hpFreqRev;
+extern float lpFreqRev;
+extern float t60;
+extern float revMix;
+
+// Bitcrusher
+extern int rateRatio;
+extern int bitDepth;
+
+// Drumbox
+extern int decayCoeff;
+extern float newFreqDB;
+extern float newDelayDB;
+extern float newFeedbackDB;
+
+// Synth
+extern float glideTimeSynth;
+extern float synthGain;
+extern float lpFreqSynth;
+extern float detuneMaxSynth;
+
+// Level
 extern float inputLevel;
 extern float outputLevel;
 

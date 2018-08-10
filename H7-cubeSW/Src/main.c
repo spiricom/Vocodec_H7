@@ -300,7 +300,7 @@ int main(void)
 				  int emojiIndex = (int)(formantKnob * 8);
 				  int pixel = (int)(formantKnob * 8 * 12);
 				  if (pixel > 104) pixel = 104;
-				  OLEDwriteString(formantEmojis[emojiIndex], 10, pixel%12, SecondLine);
+				  OLEDwriteString(formantEmojis[emojiIndex], 10, pixel%12, SecondLine, 0);
 			  }
 			  else if (modeChain[chainIndex] == PitchShiftMode)
 			  {
@@ -335,21 +335,7 @@ int main(void)
 		  counter = 0;
 	  }
 	  counter++;
-#if 0
-	  GFXfillRect(&theGFX, 0, 16, 128, 16, 0);
-	  int repeat = (128 / AUDIO_FRAME_SIZE);
-	  float ratio = AUDIO_FRAME_SIZE*INV_TWO_TO_7;
-	  if (repeat == 0) repeat = 1;
-	  if (ratio < 1.0f) ratio = 1.0f;
-	  int idx;
-	  for (int i = 0; i < 128; i++)
-	  {
-		 idx = (int)(buffer_offset + ((int)(((i / repeat) * 2) * ratio)));
-		 GFXwritePixel(&theGFX, i, (uint16_t) (((float)audioOutBuffer[idx] * INV_TWO_TO_15 * 8.0f) + 24.0f), 1);
-	  }
 
-
-#endif
 	  //ssd1306_display_full_buffer();
 	  //buffer[counter] = (uint8_t)(randomNumber() * 255.0f);
 
@@ -357,7 +343,7 @@ int main(void)
 	  //
 
   /* USER CODE END WHILE */
-    MX_USB_HOST_Process();
+  //  MX_USB_HOST_Process();
 
   /* USER CODE BEGIN 3 */
 
