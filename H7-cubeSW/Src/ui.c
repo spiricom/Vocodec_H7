@@ -58,7 +58,8 @@ void UIInit(uint16_t* myADCArray)
 		modeAvail[i] = 1;
 	}
 
-	writeModeToLCD(displayMode, upDownMode);
+	OLEDwriteString("VOCODER     ", 12, 0, FirstLine);
+	OLEDwriteString("            ", 12, 0, SecondLine);
 	for(int i = 0; i < NUM_KNOBS; i++)
 	{
 		knobRamps[i] = tRampInit(100.0f, 1);
@@ -168,143 +169,49 @@ static void buttonWasPressed(VocodecButton button)
 	else if (button == ButtonA) aButtonWasPressed();
 	else if (button == ButtonB) bButtonWasPressed();
 
-	writeModeToLCD(displayMode, upDownMode);
+	if (bypass)
+	{
+		if (sustainInverted)
+		{
+			OLEDwriteString("B SI", 4, 0, SecondLine);
+		}
+		else
+		{
+			OLEDwriteString("B   ", 4, 0, SecondLine);
+		}
+	}
+	else
+	{
+		if (sustainInverted)
+		{
+			OLEDwriteString("  SI", 4, 0, SecondLine);
+		}
+		else
+		{
+			OLEDwriteString("   ", 4, 0, SecondLine);
+		}
+	}
 }
 
 static void upButtonWasPressed()
 {
-	if (upDownMode == ModeChange)
-	{
-		knobLock[displayMode] = 1;
-		for (int i = 0; i < ModeCount; i++)
-		{
-			if (displayMode < ModeCount - 1) displayMode++;
-			else displayMode = 0;
-			if (modeAvail[displayMode] > 0) break;
-		}
-		if (chainLock[chainIndex] == 0) modeChain[chainIndex] = displayMode;
-		OLEDclear();
-	}
-	else if (upDownMode == ParameterChange)
-	{
-		if (displayMode == AutotuneAbsoluteMode)
-		{
-			if (numActiveVoices[displayMode] < NUM_SHIFTERS) numActiveVoices[displayMode]++;
-			else numActiveVoices[displayMode] = 1;
-			//else numActiveVoices[mode] = NUM_SHIFTERS;
-		}
-		else if (displayMode == VocoderMode || displayMode == SynthMode)
-		{
-			if (numActiveVoices[displayMode] < NUM_VOICES) numActiveVoices[displayMode]++;
-			else numActiveVoices[displayMode] = 1;
-			//else numActiveVoices[mode] = NUM_VOICES;
-		}
-	}
+
 }
 
 static void downButtonWasPressed()
 {
-	if (upDownMode == ModeChange)
-	{
-		knobLock[displayMode] = 1;
-		for (int i = 0; i < ModeCount; i++)
-		{
-			if (displayMode > 0) displayMode--;
-			else displayMode = ModeCount - 1;
-			if (modeAvail[displayMode] > 0) break;
-		}
-		if (chainLock[chainIndex] == 0) modeChain[chainIndex] = displayMode;
-		OLEDclear();
-	}
-	else if (upDownMode == ParameterChange)
-	{
-		if (displayMode == AutotuneAbsoluteMode)
-		{
-			if (numActiveVoices[displayMode] > 1) numActiveVoices[displayMode]--;
-			else numActiveVoices[displayMode] = NUM_SHIFTERS;
-			//else activeShifters = 1;
-		}
-		else if (displayMode == VocoderMode || displayMode == SynthMode)
-		{
-			if (numActiveVoices[displayMode] > 1) numActiveVoices[displayMode]--;
-			else numActiveVoices[displayMode] = NUM_VOICES;
-			//else activeVoices = 1;
-		}
-	}
+
 }
 
 static void aButtonWasPressed()
 {
-	if (buttonsHeld[ButtonB] > 0)
-	{
-		if (displayMode == ChainEditMode)
-		{
-			displayMode = modeChain[0];
-			upDownMode = ModeChange;
-		}
-		else
-		{
-			displayMode = ChainEditMode;
-			upDownMode = ParameterChange;
-		}
-	}
-	else if (knobLock[displayMode] > 0) knobLock[displayMode] = 0;
-	else
-	{
-		if (displayMode == PitchShiftMode || displayMode == AutotuneNearestMode || displayMode == AutotuneAbsoluteMode)
-		{
-			formantCorrect[displayMode] = (formantCorrect[displayMode] > 0) ? 0 : 1;
-		}
-		else if (displayMode == DrawMode)
-		{
-			OLEDclear();
-		}
-	}
+	if (sustainInverted) 	sustainInverted = 0;
+	else 					sustainInverted = 1;
 }
 
 static void bButtonWasPressed()
 {
-	if (upDownMode == ModeChange)
-	{
-		if (displayMode == AutotuneNearestMode)
-		{
-			int notesHeld = 0;
-			for (int i = 0; i < 12; ++i)
-			{
-				if (chordArray[i] > 0) { notesHeld = 1; }
-			}
-
-			if (notesHeld)
-			{
-				for (int i = 0; i < 12; ++i)
-				{
-					lockArray[i] = chordArray[i];
-				}
-			}
-
-			autotuneLock = (autotuneLock > 0) ? 0 : 1;
-		}
-		else if (displayMode == AutotuneAbsoluteMode)
-		{
-			upDownMode = ParameterChange;
-		}
-		else if (displayMode == VocoderMode || displayMode == SynthMode)
-		{
-			upDownMode = ParameterChange;
-		}
-		else if (displayMode == DrawMode)
-		{
-			penColor = (penColor > 0) ? 0 : 1;
-		}
-	}
-	else if (upDownMode == ParameterChange)
-	{
-		if (displayMode == ChainEditMode)
-		{
-
-		}
-		else upDownMode = ModeChange;
-	}
+	toggleBypass();
 }
 
 static void buttonWasReleased(VocodecButton button)

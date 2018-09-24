@@ -165,7 +165,7 @@ void SFXInit(float sr, int blocksize)
 
 	mpoly = tMPoly_init(MPOLY_NUM_MAX_VOICES);
 	tMPoly_setPitchGlideTime(mpoly, 50.0f);
-	numActiveVoices[VocoderMode] = 1;
+	numActiveVoices[VocoderMode] = 8;
 	numActiveVoices[AutotuneAbsoluteMode] = 1;
 	numActiveVoices[SynthMode] = 1;
 	vocoder = tTalkboxInit();
@@ -202,7 +202,7 @@ void SFXInit(float sr, int blocksize)
 void SFXVocoderFrame()
 {
 	tMPoly_setNumVoices(mpoly, numActiveVoices[VocoderMode]);
-	if (knobLock[VocoderMode] == 0)
+	//if (knobLock[VocoderMode] == 0)
 	{
 		glideTimeVoc = (knobVals[0] * 999.0f) + 5.0f;
 		lpFreqVoc = ((knobVals[2]) * 17600.0f) + 400.0f;

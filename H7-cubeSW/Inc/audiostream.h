@@ -40,12 +40,14 @@
 #define AUDIO_BUFFER_SIZE     AUDIO_FRAME_SIZE * 4 //number of samples in the whole data structure (four times the audio frame size because of stereo and also double-buffering/ping-ponging)
 
 extern int32_t audioOutBuffer[AUDIO_BUFFER_SIZE];
+extern int bypass;
 
 // MIDI FUNCTIONS
 void noteOn(int key, int velocity);
 void noteOff(int key, int velocity);
 void sustainOn(void);
 void sustainOff(void);
+void toggleBypass(void);
 void ctrlInput(int ctrl, int value);
 
 /* Exported types ------------------------------------------------------------*/

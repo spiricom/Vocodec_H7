@@ -32,8 +32,18 @@ typedef enum BOOL {
 } BOOL;
 
 int sustain = 0;
+int sustainInverted = 0;
 int noteSounding[128];
 int noteHeld[128];
+int bypass = 0;
+
+void toggleBypass(void)
+{
+	if (bypass) bypass = 0;
+	else		bypass = 1;
+
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, bypass ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
 
 void noteOn(int key, int velocity)
 {

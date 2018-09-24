@@ -29,6 +29,7 @@ extern int bitDepth;
 extern int rateRatio;
 
 extern int sustain;
+extern int sustainInverted;
 extern int noteSounding[128];
 extern int noteDown[128];
 

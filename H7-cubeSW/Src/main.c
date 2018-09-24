@@ -112,6 +112,8 @@ char* formantEmojis[9] =
 	"        :D"
 };
 
+char info[12];
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -227,37 +229,8 @@ int main(void)
 
   GFXsetTextColor(&theGFX, 1, 0);
   GFXsetTextSize(&theGFX, 1);
-  /*
-  GFXfillRect(&theGFX, 0, 0, 128, 16, 0);
-  GFXsetCursor(&theGFX, 0,15);
-  GFXwrite(&theGFX,'P');
-  GFXwrite(&theGFX,'I');
-  GFXwrite(&theGFX,'T');
-  GFXwrite(&theGFX,'C');
-  GFXwrite(&theGFX,'H');
-  GFXwrite(&theGFX,'S');
-  GFXwrite(&theGFX,'H');
-  GFXwrite(&theGFX,'I');
-  GFXwrite(&theGFX,'F');
-  GFXwrite(&theGFX,'T');
-  */
-  /*
-  OLEDwriteString("OH NOES", 7, 0, FirstLine);
-  GFXsetFont(&theGFX, &URW_Gothic_L_Book_16);
-  OLEDwriteString("IT ME", 5, 0, SecondLine);
-  */
-  //OLEDwriteFixedFloatLine(8.463f, 4, 3, FirstLine);
-  //GFXsetCursor(&theGFX, 100,16);
-  //GFXwriteFastHLine(&theGFX, 0, 24,
-          //128, 1);
-
-  //GFXwrite(&theGFX,'A');
-  //GFXdrawChar(&theGFX,0,0,'H', 1, 0, 2);
 
   ssd1306_display_full_buffer();
-
-  //HAL_Delay(500);
-  //sdd1306_invertDisplay(1);
 
 
   // this code sets the processor to treat denormal numbers (very tiny floats) as zero to improve performance.
@@ -287,42 +260,26 @@ int main(void)
 	  {
 		  processKnobs();
 
-		  if (displayMode == FormantShiftMode)
+		  /*
+		  for (int i = 0; i < 12; i++)
 		  {
-			  GFXfillRect(&theGFX, 0, 16, 128, 16, 0);
-			  int emojiIndex = (int)(formantKnob * 8);
-			  int pixel = (int)(formantKnob * 8 * 12);
-			  if (pixel > 104) pixel = 104;
-			  OLEDwriteString(formantEmojis[emojiIndex], 10, pixel%12, SecondLine);
+			  info[i] = ' ';
 		  }
-		  else if (displayMode == PitchShiftMode)
+
+		  if (bypass)
 		  {
-			  OLEDwriteFixedFloatLine(pitchFactor, 9, 2, SecondLine);
+			  info[0] = 'B';
 		  }
-		  else if (displayMode == DelayMode)
+
+		  if (sustainInverted)
 		  {
-			  OLEDwriteFixedFloat(newDelay*oops.invSampleRate, 4, 3, 4, SecondLine);
-			  OLEDwriteFixedFloat(newFeedback, 3, 2, 76, SecondLine);
+			  info[2] = 'S';
+			  info[3] = 'I';
 		  }
-		  else if (displayMode == DrumboxMode)
-		  {
-			  OLEDwriteFixedFloat(newDelayDB*oops.invSampleRate, 4, 3, 4, SecondLine);
-			  OLEDwriteFixedFloat(newFeedbackDB, 3, 2, 76, SecondLine);
-		  }
-		  else if (displayMode == BitcrusherMode)
-		  {
-			  OLEDwriteInt(rateRatio, 3, 4, SecondLine);
-			  OLEDwriteInt(bitDepth, 3, 76, SecondLine);
-		  }
-		  else if (displayMode == DrawMode)
-		  {
-			  UIDrawFrame();
-		  }
-		  else if (displayMode == LevelMode)
-		  {
-			  OLEDwriteFixedFloat(inputLevel, 3, 2, 4, SecondLine);
-			  OLEDwriteFixedFloat(outputLevel, 3, 2, 76, SecondLine);
-		  }
+
+		  OLEDwriteString(info, 10, 0, SecondLine);
+		  */
+
 		  buttonCheck(); // should happen here, not frame, or else interrupts audio processing
 		  counter = 0;
 	  }
