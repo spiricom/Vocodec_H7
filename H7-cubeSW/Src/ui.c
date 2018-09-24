@@ -38,6 +38,7 @@ uint8_t chainLock[CHAIN_LENGTH];
 uint8_t chainIndex = 0;
 uint8_t modeAvail[ModeCount];
 
+
 void UIInit(uint16_t* myADCArray)
 {
 	float val;
@@ -205,13 +206,30 @@ static void downButtonWasPressed()
 
 static void aButtonWasPressed()
 {
-	if (sustainInverted) 	sustainInverted = 0;
-	else 					sustainInverted = 1;
+	if (buttonsHeld[ButtonB])
+	{
+		clearNotes();
+
+		toggleBypass();
+	}
+	else
+	{
+		toggleSustain();
+	}
 }
 
 static void bButtonWasPressed()
 {
-	toggleBypass();
+	if (buttonsHeld[ButtonA])
+	{
+		clearNotes();
+
+		toggleSustain();
+	}
+	else
+	{
+		toggleBypass();
+	}
 }
 
 static void buttonWasReleased(VocodecButton button)

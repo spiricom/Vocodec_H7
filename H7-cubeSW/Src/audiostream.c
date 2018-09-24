@@ -37,12 +37,29 @@ int noteSounding[128];
 int noteHeld[128];
 int bypass = 0;
 
+void clearNotes(void)
+{
+	for (int key = 0; key < 128; key++)
+	{
+		noteSounding[key] = 0;
+		noteHeld[key] = 0;
+		SFXNoteOff(key, 64);
+
+	}
+}
+
 void toggleBypass(void)
 {
 	if (bypass) bypass = 0;
 	else		bypass = 1;
 
 	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, bypass ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
+void toggleSustain(void)
+{
+	if (sustainInverted) 	sustainInverted = 0;
+	else 					sustainInverted = 1;
 }
 
 void noteOn(int key, int velocity)
