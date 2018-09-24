@@ -61,6 +61,9 @@ void UIInit(uint16_t* myADCArray)
 
 	OLEDwriteString("VOCODER     ", 12, 0, FirstLine);
 	OLEDwriteString("            ", 12, 0, SecondLine);
+
+	sdd1306_invertDisplay(1);
+
 	for(int i = 0; i < NUM_KNOBS; i++)
 	{
 		knobRamps[i] = tRampInit(100.0f, 1);
@@ -172,24 +175,30 @@ static void buttonWasPressed(VocodecButton button)
 
 	if (bypass)
 	{
+		sdd1306_invertDisplay(0);
 		if (sustainInverted)
 		{
-			OLEDwriteString("B SI", 4, 0, SecondLine);
+			OLEDwriteString("DRY         ", 12, 0, FirstLine);
+			OLEDwriteString("SI", 2, 0, SecondLine);
 		}
 		else
 		{
-			OLEDwriteString("B   ", 4, 0, SecondLine);
+			OLEDwriteString("DRY         ", 12, 0, FirstLine);
+			OLEDwriteString("  ", 2, 0, SecondLine);
 		}
 	}
 	else
 	{
+		sdd1306_invertDisplay(1);
 		if (sustainInverted)
 		{
-			OLEDwriteString("  SI", 4, 0, SecondLine);
+			OLEDwriteString("VOCODER     ", 12, 0, FirstLine);
+			OLEDwriteString("SI", 2, 0, SecondLine);
 		}
 		else
 		{
-			OLEDwriteString("   ", 4, 0, SecondLine);
+			OLEDwriteString("VOCODER     ", 12, 0, FirstLine);
+			OLEDwriteString("  ", 2, 0, SecondLine);
 		}
 	}
 }
