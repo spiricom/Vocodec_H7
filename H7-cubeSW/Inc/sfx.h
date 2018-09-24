@@ -28,6 +28,10 @@ extern float newDelayDB;
 extern int bitDepth;
 extern int rateRatio;
 
+extern int sustain;
+extern int noteSounding[128];
+extern int noteDown[128];
+
 extern float inputLevel;
 extern float outputLevel;
 

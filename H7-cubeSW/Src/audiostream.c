@@ -31,24 +31,57 @@ typedef enum BOOL {
 	TRUE
 } BOOL;
 
+int sustain = 0;
+int noteSounding[128];
+int noteHeld[128];
+
 void noteOn(int key, int velocity)
 {
 	if (!velocity)
 	{
-		SFXNoteOff(key, velocity);
-		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_RESET);    //LED
+		noteOff(key, velocity);
 	}
 	else
 	{
 		SFXNoteOn(key, velocity);
+		noteSounding[key] = 1;
+
+		noteHeld[key] = 1;
+
 		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_SET);    //LED3
 	}
 }
 
 void noteOff(int key, int velocity)
 {
-	SFXNoteOff(key, velocity);
-	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_RESET);    //LED3
+	if (!sustain)
+	{
+		SFXNoteOff(key, velocity);
+		noteSounding[key] = 0;
+
+		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_RESET);    //LED3
+	}
+
+	noteHeld[key] = 0;
+}
+
+void sustainOn(void)
+{
+	sustain = TRUE;
+}
+
+void sustainOff(void)
+{
+	sustain = FALSE;
+
+	for (int key = 0; key < 128; key++)
+	{
+		if (noteSounding[key] && !noteHeld[key])
+		{
+			SFXNoteOff(key, 64);
+			noteSounding[key] = 0;
+		}
+	}
 }
 
 void ctrlInput(int ctrl, int value)

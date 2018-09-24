@@ -170,6 +170,8 @@ void ProcessReceivedMidiDatas(uint32_t myLength)
 						case (0x14): 
 							break;
 						case (64): // sustain
+							if (data) 	sustainOff();
+							else		sustainOn();
 							break;
 					}
 
