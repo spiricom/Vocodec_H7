@@ -50,20 +50,9 @@ int32_t SFXVocoderTick(int32_t input);
 void SFXFormantFrame();
 int32_t SFXFormantTick(int32_t input);
 
-void SFXPitchShiftFrame();
-int32_t SFXPitchShiftTick(int32_t input);
-
-void SFXAutotuneNearestFrame();
-int32_t SFXAutotuneNearestTick(int32_t input);
-
-void SFXAutotuneAbsoluteFrame();
-int32_t SFXAutotuneAbsoluteTick(int32_t input);
-
 void SFXDelayFrame();
 int32_t SFXDelayTick(int32_t input);
 
-void SFXReverbFrame();
-int32_t SFXReverbTick(int32_t input);
 
 void SFXBitcrusherFrame();
 int32_t SFXBitcrusherTick(int32_t input);

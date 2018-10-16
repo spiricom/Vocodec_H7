@@ -20,7 +20,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #define NUM_VOICES 8
-#define NUM_SHIFTERS 4
+#define NUM_SHIFTERS 0
 #define MPOLY_NUM_MAX_VOICES 8
 #define NUM_OSC 4
 #define INV_NUM_OSC (1.0f / NUM_OSC)
@@ -40,7 +40,7 @@ extern const float shaper1[SHAPER1_TABLE_SIZE];
 #define     N_808HIHAT           0
 #define     N_808COWBELL         0
 #define     N_COMPRESSOR         0
-#define     N_PRCREV             1
+#define     N_PRCREV             0
 #define     N_NREV               0
 #define		N_PERIOD			 1
 #define		N_PITCHSHIFT		 NUM_SHIFTERS
@@ -86,7 +86,7 @@ extern const float shaper1[SHAPER1_TABLE_SIZE];
 #define     DELAY_LENGTH        16384   // The maximum delay length of all Delay/DelayL/DelayA components.
                                             // Feel free to change to suit memory constraints or desired delay max length / functionality.
 
-#define     INC_MISC_WT         1     // Set this to 1 if you are interested in the mtof1, adc1, tanh1, and shaper1 wavetables
+#define     INC_MISC_WT         0     // Set this to 1 if you are interested in the mtof1, adc1, tanh1, and shaper1 wavetables
                                         // and have spare memory.
 
 // Preprocessor defines to determine whether to include component files in build.

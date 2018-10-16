@@ -196,7 +196,7 @@ void SFXInit(float sr, int blocksize)
 	lowpass = tSVFInit(SVFTypeLowpass, 20000.0f, 1.0f);
 	highpass = tSVFInit(SVFTypeHighpass, 20.0f, 1.0f);
 
-	rev = tPRCRevInit(1.0f);
+
 }
 
 void SFXVocoderFrame()
@@ -269,96 +269,10 @@ int32_t SFXFormantTick(int32_t input)
 	return (int32_t) (output * TWO_TO_31 * 0.5f);
 }
 
-void SFXPitchShiftFrame()
-{
-	if (knobLock[PitchShiftMode] == 0)
-	{
-		pitchFactor = knobVals[2] * 3.5f + 0.50f;
-		formantShiftFactorPS = (knobVals[1] * 2.0f) - 1.0f;
-	}
-	tPitchShift_setPitchFactor(pshift[0], pitchFactor);
-}
 
-int32_t SFXPitchShiftTick(int32_t input)
-{
 
-	float sample = 0.0f;
-	float output = 0.0f;
 
-	sample = (float) (input * INV_TWO_TO_31);
 
-	if (formantCorrect[PitchShiftMode] > 0) sample = tFormantShifterRemove(fs, sample * 2.0f);
-
-	tPeriod_findPeriod(p, sample);
-	output = tPitchShift_shift(pshift[0]);
-
-	if (formantCorrect[PitchShiftMode] > 0) output = tFormantShifterAdd(fs, output, 0.0f) * 0.5f;
-
-	count++;
-
-	return (int32_t) (output * TWO_TO_31);
-}
-
-void SFXAutotuneNearestFrame()
-{
-	if (knobLock[AutotuneNearestMode] == 0)
-	{
-
-	}
-}
-
-int32_t SFXAutotuneNearestTick(int32_t input)
-{
-	float sample = 0.0f;
-	float output = 0.0f;
-
-	sample = (float) (input * INV_TWO_TO_31);
-
-	if (formantCorrect[AutotuneNearestMode] > 0) sample = tFormantShifterRemove(fs, sample * 2.0f);
-
-	tPeriod_findPeriod(p, sample);
-	output = tPitchShift_shiftToFunc(pshift[0], nearestPeriod);
-
-	if (formantCorrect[AutotuneNearestMode] > 0) output = tFormantShifterAdd(fs, output, 0.0f) * 0.5f;
-
-	return (int32_t) (output * TWO_TO_31);
-}
-
-void SFXAutotuneAbsoluteFrame()
-{
-	tMPoly_setNumVoices(mpoly, numActiveVoices[AutotuneAbsoluteMode]);
-	for (int i = 0; i < tMPoly_getNumVoices(mpoly); ++i)
-	{
-		calculateFreq(i);
-	}
-	if (knobLock[AutotuneAbsoluteMode] == 0)
-	{
-		glideTimeAuto = (knobVals[0] * 999.0f) + 5.0f;
-	}
-	tMPoly_setPitchGlideTime(mpoly, glideTimeAuto);
-}
-int32_t SFXAutotuneAbsoluteTick(int32_t input)
-{
-	float sample = 0.0f;
-	float output = 0.0f;
-
-	tMPoly_tick(mpoly);
-
-	sample = (float) (input * INV_TWO_TO_31);
-
-	if (formantCorrect[AutotuneAbsoluteMode] > 0) sample = tFormantShifterRemove(fs, sample * 2.0f);
-
-	tPeriod_findPeriod(p, sample);
-
-	for (int i = 0; i < tMPoly_getNumVoices(mpoly); ++i)
-	{
-		output += tPitchShift_shiftToFreq(pshift[i], freq[i]) * tRampTick(ramp[i]);
-	}
-
-	if (formantCorrect[AutotuneAbsoluteMode] > 0) output = tFormantShifterAdd(fs, output, 0.0f) * 0.5f;
-
-	return (int32_t) (output * TWO_TO_31);
-}
 
 void SFXDelayFrame()
 {
@@ -398,38 +312,6 @@ int32_t SFXDelayTick(int32_t input)
 	delayFeedbackSamp = output;
 
 	output += sample;
-
-	return (int32_t) (output * TWO_TO_31);
-}
-
-void SFXReverbFrame()
-{
-	if (knobLock[ReverbMode] == 0)
-	{
-		t60 = knobVals[2] * 10.0f;
-		revMix = knobVals[3] * 1.0f;
-		lpFreqRev = ((knobVals[1]) * 19900.0f) + 100.0f;
-		if (lpFreqRev < hpFreqRev) lpFreqRev = hpFreqRev;
-		hpFreqRev = ((knobVals[0]) * 10000.0f) + 10.0f;
-		if (hpFreqRev > lpFreqRev) hpFreqRev = lpFreqRev;
-	}
-	tSVFSetFreq(lowpass, lpFreqRev);
-	tSVFSetFreq(highpass, hpFreqRev);
-	tPRCRevSetT60(rev, t60);
-	tPRCRevSetMix(rev, revMix);
-}
-
-int32_t SFXReverbTick(int32_t input)
-{
-	float sample = 0.0f;
-	float output = 0.0f;
-
-	sample = (float) (input * INV_TWO_TO_31);
-
-	output = tPRCRevTick(rev, sample);
-
-	output = tSVFTick(lowpass, output);
-	output = tSVFTick(highpass, output);
 
 	return (int32_t) (output * TWO_TO_31);
 }
@@ -482,7 +364,7 @@ void SFXDrumboxFrame()
 	tRampSetDest(rampFeedback, newFeedbackDB);
 	tRampSetDest(rampDelayFreq, newDelayDB);
 	tRampSetDest(rampSineFreq, newFreqDB);
-	tEnvelopeFollowerDecayCoeff(envFollowSine,decayCoeffTable[decayCoeff]);
+	tEnvelopeFollowerDecayCoeff(envFollowSine,.9f); //changed from decayCoefTable
 	tEnvelopeFollowerDecayCoeff(envFollowNoise,0.80f);
 }
 

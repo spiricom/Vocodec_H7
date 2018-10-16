@@ -8,7 +8,7 @@
 // (otherwise the TX times out because the DMA can't see the data location) -JS
 
 #define NUM_FB_DELAY_TABLES 8
-
+#define SAMPLE_BUFFER_SIZE 40000
 int32_t audioOutBuffer[AUDIO_BUFFER_SIZE] __ATTR_RAM_D2;
 int32_t audioInBuffer[AUDIO_BUFFER_SIZE] __ATTR_RAM_D2;
 
@@ -112,32 +112,45 @@ void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTy
 
 int numSamples = AUDIO_FRAME_SIZE;
 
+
+float myRecordBuffer[SAMPLE_BUFFER_SIZE];
+float myPlayBuffer[SAMPLE_BUFFER_SIZE];
+int32_t writeIndex = 0;
+int32_t readIndex = 0;
+uint32_t delayTime = 20000;
+
 void audioFrame(uint16_t buffer_offset)
 {
-	int sample = 0;
+	float sample = 0.0f;
 
-	for (int i = 0; i < 3; i++)
-	{
-		if (modeChain[i] != ModeNil)
-		{
-			frameFunctions[modeChain[i]]();
-		}
-	}
 	for (int cc=0; cc < numSamples; cc++)
 	{
 		for (int i = 0; i < NUM_KNOBS; i++)
 		{
 			knobVals[i] = tRampTick(knobRamps[i]);
 		}
-		sample = (int) (audioInBuffer[buffer_offset+(cc*2)] * inputLevel);
-		for (int i = 0; i < CHAIN_LENGTH; i++)
+
+		sample = (float )((audioInBuffer[buffer_offset+(cc*2)] * inputLevel) * INV_TWO_TO_31);
+
+		myRecordBuffer[writeIndex] = sample;
+
+		readIndex = writeIndex - delayTime;
+		if (readIndex < 0)
 		{
-			if (modeChain[i] != ModeNil)
-			{
-				sample = tickFunctions[modeChain[i]](sample);
-			}
+			readIndex +=SAMPLE_BUFFER_SIZE;
 		}
-		audioOutBuffer[buffer_offset + (cc*2)] = (int) (sample * outputLevel);
+
+		writeIndex++;
+		if (writeIndex > SAMPLE_BUFFER_SIZE)
+		{
+			writeIndex = 0;
+		}
+
+
+
+		sample = myRecordBuffer[readIndex];
+
+		audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) ((sample * outputLevel) * TWO_TO_31);
 	}
 }
 
@@ -149,20 +162,11 @@ static void initFunctionPointers(void)
 	frameFunctions[FormantShiftMode] = SFXFormantFrame;
 	tickFunctions[FormantShiftMode] = SFXFormantTick;
 
-	frameFunctions[PitchShiftMode] = SFXPitchShiftFrame;
-	tickFunctions[PitchShiftMode] = SFXPitchShiftTick;
-
-	frameFunctions[AutotuneNearestMode] = SFXAutotuneNearestFrame;
-	tickFunctions[AutotuneNearestMode] = SFXAutotuneNearestTick;
-
-	frameFunctions[AutotuneAbsoluteMode] = SFXAutotuneAbsoluteFrame;
-	tickFunctions[AutotuneAbsoluteMode] = SFXAutotuneAbsoluteTick;
 
 	frameFunctions[DelayMode] = SFXDelayFrame;
 	tickFunctions[DelayMode] = SFXDelayTick;
 
-	frameFunctions[ReverbMode] = SFXReverbFrame;
-	tickFunctions[ReverbMode] = SFXReverbTick;
+
 
 	frameFunctions[BitcrusherMode] = SFXBitcrusherFrame;
 	tickFunctions[BitcrusherMode] = SFXBitcrusherTick;
