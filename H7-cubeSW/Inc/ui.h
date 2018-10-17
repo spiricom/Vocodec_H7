@@ -79,7 +79,6 @@ void UIInit(uint16_t* myADCArray);
 
 void buttonCheck(void);
 void processKnobs(void);
-
 void OLEDdrawPoint(int16_t x, int16_t y, uint16_t color);
 void OLEDdrawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color);
 void OLEDdrawCircle(int16_t x0, int16_t y0, int16_t r, uint16_t color);

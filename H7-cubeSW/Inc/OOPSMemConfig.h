@@ -70,7 +70,7 @@ extern const float shaper1[SHAPER1_TABLE_SIZE];
 #define     N_ENVELOPE           0
 #define     N_ENV                0 + (1 * N_PITCHSHIFTER) + (1 * N_PERIOD)
 #define     N_ADSR               0
-#define     N_ENVELOPEFOLLOW     2
+#define     N_ENVELOPEFOLLOW     3
 #define     N_VOCODER            0
 #define     N_TALKBOX            1
 #define     N_POLY               0

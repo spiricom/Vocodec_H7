@@ -30,6 +30,7 @@ tSVF* highpass;
 tDelayL* delay;
 tPRCRev* rev;
 
+
 #define FEEDBACK_LOOKUP_SIZE 5
 #define DELAY_LOOKUP_SIZE 4
 float FeedbackLookup[FEEDBACK_LOOKUP_SIZE] = { 0.0f, 0.8f, .999f, 1.0f, 1.03f };
@@ -169,6 +170,8 @@ void SFXInit(float sr, int blocksize)
 	numActiveVoices[AutotuneAbsoluteMode] = 1;
 	numActiveVoices[SynthMode] = 1;
 	vocoder = tTalkboxInit();
+
+
 	for (int i = 0; i < NUM_VOICES; i++)
 	{
 		for (int j = 0; j < NUM_OSC; j++)

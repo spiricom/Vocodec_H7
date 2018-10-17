@@ -2095,6 +2095,7 @@ tAtkDtk* tAtkDtk_init(int blocksize)
 
 tAtkDtk* tAtkDtk_init_expanded(int blocksize, int atk, int rel)
 {
+	//&oops.tPolyRegistry[oops.registryIndex[T_POLY]++]
     tAtkDtk *a = &oops.tAtkDtkRegistry[oops.registryIndex[T_ATKDTK]++];
     
     atkdtk_init(a, blocksize, atk, rel);
@@ -2161,7 +2162,7 @@ int tAtkDtk_detect(tAtkDtk *a, float *in)
     
     atkdtk_envelope(a, in);
     
-    if(a->env >= a->prevAmp*2) //2 times greater = 6dB increase
+    if(a->env >= a->prevAmp*a->threshold) //2 times greater = 6dB increase
         result = 1;
     else
         result = 0;
@@ -2179,10 +2180,8 @@ static void atkdtk_init(tAtkDtk *a, int blocksize, int atk, int rel)
     a->env = 0;
     a->blocksize = blocksize;
     a->threshold = DEFTHRESHOLD;
-    a->samplerate = oops.SampleRate;
+    a->samplerate = oops.sampleRate;
     a->prevAmp = 0;
-    
-    a->env = 0;
     
     tAtkDtk_setAtk(a, atk);
     tAtkDtk_setRel(a, rel);

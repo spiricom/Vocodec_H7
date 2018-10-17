@@ -38,7 +38,9 @@
 #define AUDIO_FRAME_SIZE      256
 #define HALF_BUFFER_SIZE      AUDIO_FRAME_SIZE * 2 //number of samples per half of the "double-buffer" (twice the audio frame size because there are interleaved samples for both left and right channels)
 #define AUDIO_BUFFER_SIZE     AUDIO_FRAME_SIZE * 4 //number of samples in the whole data structure (four times the audio frame size because of stereo and also double-buffering/ping-ponging)
-
+#define SAMPLE_BUFFER_SIZE 20000
+#define SAMPLE_BUFFER_SIZE_MINUS_ONE SAMPLE_BUFFER_SIZE-1
+#define SAMPLE_BUFFER_SIZE_TIMES_TWO SAMPLE_BUFFER_SIZE*2
 extern int32_t audioOutBuffer[AUDIO_BUFFER_SIZE];
 
 // MIDI FUNCTIONS
@@ -74,6 +76,9 @@ void presetButtonUp(void);
 
 void setFundamental(float fund);
 
+void grabBuffer(void);
+
+int attackDetect(float input);
 
 /* Exported constants --------------------------------------------------------*/
 
@@ -89,6 +94,16 @@ extern float slide_tune;
 
 extern float valPerM;
 extern float mPerVal;
+
+extern float myRecordBuffer[SAMPLE_BUFFER_SIZE];
+extern float myPlayBuffer[SAMPLE_BUFFER_SIZE_TIMES_TWO];
+extern int32_t recWriteIndex;
+extern int32_t recReadIndex;
+extern int32_t playReadIndex;
+extern uint32_t delayTime;
+
+extern uint32_t loopLength;
+extern uint32_t loopStart;
 
 #ifdef SAMPLERATE96K
 #define SAMPLE_RATE 96000.f
