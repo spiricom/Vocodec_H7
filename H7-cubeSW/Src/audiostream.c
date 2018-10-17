@@ -160,7 +160,7 @@ void audioFrame(uint16_t buffer_offset)
 			{
 				grabBuffer();
 			}
-			detectorCountdown = 200;
+			detectorCountdown = 100;
 
 		}
 
@@ -174,19 +174,8 @@ void audioFrame(uint16_t buffer_offset)
 
 		myRecordBuffer[recWriteIndex] = sample;
 
-		if (recordContinueCountdown > 0)
-		{
-			myPlayBuffer[SAMPLE_BUFFER_SIZE_TIMES_TWO - recordContinueCountdown] = sample;
-		}
-		recordContinueCountdown--;
 
 		loopLength = (uint32_t)(knobVals[0] * 20000 + 10);
-
-
-		if (recordContinueCountdown < 0)
-		{
-			recordContinueCountdown = 0;
-		}
 
 
 		recReadIndex = recWriteIndex - loopLength;
