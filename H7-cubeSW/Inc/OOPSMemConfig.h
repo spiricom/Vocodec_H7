@@ -79,7 +79,7 @@ extern const float shaper1[SHAPER1_TABLE_SIZE];
 #define     N_SOLAD              0 + (1 * N_PITCHSHIFTER) + (1 * N_PITCHSHIFT)
 #define     N_SNAC               0 + (1 * N_PITCHSHIFTER) + (1 * N_PERIOD)
 #define     N_ATKDTK             0
-#define     N_RAMP               5 + MPOLY_NUM_MAX_VOICES + (N_MPOLY * MPOLY_NUM_MAX_VOICES) + NUM_KNOBS
+#define     N_RAMP               7 + MPOLY_NUM_MAX_VOICES + (N_MPOLY * MPOLY_NUM_MAX_VOICES) + NUM_KNOBS
 #define     N_LOCKHARTWAVEFOLDER 0
 #define     N_FORMANTSHIFTER     1
 

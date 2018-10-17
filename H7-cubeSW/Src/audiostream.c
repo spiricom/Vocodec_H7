@@ -95,10 +95,16 @@ void ctrlInput(int ctrl, int value)
 float attackCoef = pow(0.01, 1.0/(100.0 * 48000.0 * 0.001));
 float decayCoef = pow(0.01, 1.0/(100.0 * 48000.0 * 0.001));
 
+tRamp* gain1; tRamp* gain2;
+#define CROSSFADE_SAMPLES 10
+
 void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTypeDef* hsaiIn, RNG_HandleTypeDef* hrand)
 {
 	// Initialize the audio library. OOPS.
 	SFXInit(SAMPLE_RATE, AUDIO_FRAME_SIZE);
+
+	gain1 = tRampInit((float)(100 * INV_SAMPLE_RATE), 1);
+	gain2 = tRampInit((float)(100 * INV_SAMPLE_RATE), 1);
 
 	detector = tEnvelopeFollowerInit(.1f, .9999f);
 	//now to send all the necessary messages to the codec
@@ -112,6 +118,7 @@ void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTy
 	{
 		audioOutBuffer[i] = 0;
 	}
+
 	// set up the I2S driver to send audio data to the codec (and retrieve input as well)
 	transmit_status = HAL_SAI_Transmit_DMA(hsaiOut, (uint8_t *)&audioOutBuffer[0], AUDIO_BUFFER_SIZE);
 	receive_status = HAL_SAI_Receive_DMA(hsaiIn, (uint8_t *)&audioInBuffer[0], AUDIO_BUFFER_SIZE);
@@ -120,8 +127,9 @@ void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTy
 int numSamples = AUDIO_FRAME_SIZE;
 
 
-float myRecordBuffer[SAMPLE_BUFFER_SIZE];
-float myPlayBuffer[SAMPLE_BUFFER_SIZE_TIMES_TWO];
+float buffer1[SAMPLE_BUFFER_SIZE];
+float buffer2[SAMPLE_BUFFER_SIZE];
+
 int32_t recWriteIndex = 0;
 int32_t recReadIndex = 0;
 int32_t playReadIndex = 0;
@@ -133,16 +141,39 @@ float detectorBuffer[AUDIO_FRAME_SIZE];
 int32_t detectorCountdown = 0;
 float detectorVal = 0.0f;
 int32_t recordContinueCountdown = 0;
+int whichBuffer = 0;
+int32_t phasor = 0;
+int resetPhasor = 0;
+
+int crossfade = 0;
+
 
 void audioFrame(uint16_t buffer_offset)
 {
 	float sample = 0.0f;
 
 
-
-
 	for (int cc=0; cc < numSamples; cc++)
 	{
+
+		// HANDLE CROSSFADE WITH RAMPS
+		tRampTick(gain1); tRampTick(gain2);
+
+		if (crossfade)
+		{
+			if (tRampSample(gain1) > 0.0f)
+			{
+				tRampSetDest(gain1, 0.0f);
+				tRampSetDest(gain2, 1.0f);
+			}
+			else
+			{
+				tRampSetDest(gain1, 1.0f);
+				tRampSetDest(gain2, 0.0f);
+			}
+		}
+		// ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+
 		for (int i = 0; i < NUM_KNOBS; i++)
 		{
 			knobVals[i] = tRampTick(knobRamps[i]);
@@ -158,79 +189,61 @@ void audioFrame(uint16_t buffer_offset)
 			__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 500); //bottom green
 			if (detectorCountdown == 0)
 			{
-				grabBuffer();
+				whichBuffer = 0;
+				resetPhasor = 1;
+				recWriteIndex = 0;
 			}
-			detectorCountdown = 100;
+			detectorCountdown = 50;
 
 		}
 
 		detectorCountdown--;
 
-		if (detectorCountdown< 0)
+		if (detectorCountdown < 0)
 		{
 			detectorCountdown = 0;
 			__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 0); //bottom green
 		}
 
-		myRecordBuffer[recWriteIndex] = sample;
-
-
 		loopLength = (uint32_t)(knobVals[0] * 20000 + 10);
 
-
-		recReadIndex = recWriteIndex - loopLength;
-		if (recReadIndex < 0)
+		if (recWriteIndex < SAMPLE_BUFFER_SIZE)
 		{
-			recReadIndex +=SAMPLE_BUFFER_SIZE;
+			buffer1[recWriteIndex] = sample;
+			buffer2[recWriteIndex] = sample;
+
+			recWriteIndex++;
 		}
 
-		recWriteIndex++;
-		if (recWriteIndex > SAMPLE_BUFFER_SIZE)
+		// only play back once samples are recorded up to loop length
+		if (recWriteIndex > loopLength)
 		{
-			recWriteIndex = 0;
-		}
-
-
-		sample += myPlayBuffer[playReadIndex];
-		playReadIndex = (playReadIndex + 1) % SAMPLE_BUFFER_SIZE;
-
-
-		//if the loop wraps around, check if it went over loop length
-		if (playReadIndex < loopStart)
-		{
-			if (((playReadIndex + SAMPLE_BUFFER_SIZE) - loopStart) > loopLength)
+			// reset phasor here to assure
+			if (resetPhasor > 0)
 			{
-				playReadIndex = loopStart;
+				phasor = 0;
+				resetPhasor = 0;
 			}
+
+			sample += (buffer1[phasor] * tRampTick(gain1) + buffer2[phasor] * tRampTick(gain2));
 		}
 
-		//if it doesn't wrap around, check against loop length
-		else if ((playReadIndex - loopStart) > loopLength)
+		phasor += 1;
+
+		if (phasor > loopLength)
 		{
-			playReadIndex = loopStart;
+			phasor = 0;
+			crossfade = 0;
+		}
+		else if (phasor > (loopLength - CROSSFADE_SAMPLES))
+		{
+			if (crossfade == 0) crossfade = 1;
 		}
 
 		audioOutBuffer[buffer_offset + (cc*2)] = (int32_t) ((sample * outputLevel) * TWO_TO_31);
 	}
-
-
-
-
 }
 
-
-void grabBuffer(void)
-{
-	playReadIndex = recReadIndex;
-	loopStart = playReadIndex;
-
-	//copy a section of the buffer
-	for (int i = 0; i < SAMPLE_BUFFER_SIZE; i++)
-	{
-		myPlayBuffer[SAMPLE_BUFFER_SIZE-1-i] = myRecordBuffer[(i+playReadIndex) % SAMPLE_BUFFER_SIZE];
-	}
-	recordContinueCountdown = SAMPLE_BUFFER_SIZE;
-}
 
 static void initFunctionPointers(void)
 {

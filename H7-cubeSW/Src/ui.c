@@ -235,10 +235,6 @@ static void downButtonWasPressed()
 
 static void aButtonWasPressed()
 {
-
-	grabBuffer();
-
-
 	if (buttonsHeld[ButtonB] > 0)
 	{
 		if (displayMode == ChainEditMode)
