@@ -179,14 +179,12 @@ void audioFrame(uint16_t buffer_offset)
 			knobVals[i] = tRampTick(knobRamps[i]);
 		}
 
-		sample = (float )((audioInBuffer[buffer_offset+(cc*2)] * inputLevel) * INV_TWO_TO_31);
+		sample = (float)((audioInBuffer[buffer_offset+(cc*2)] * inputLevel) * INV_TWO_TO_31);
 
 		detectorVal = tEnvelopeFollowerTick(detector, sample);
 
-		if (detectorVal > .02f)
+		if (detectorVal > .02f) // got an audio trigger
 		{
-
-			__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 500); //bottom green
 			if (detectorCountdown == 0)
 			{
 				whichBuffer = 0;
@@ -194,7 +192,6 @@ void audioFrame(uint16_t buffer_offset)
 				recWriteIndex = 0;
 			}
 			detectorCountdown = 50;
-
 		}
 
 		detectorCountdown--;
@@ -202,8 +199,9 @@ void audioFrame(uint16_t buffer_offset)
 		if (detectorCountdown < 0)
 		{
 			detectorCountdown = 0;
-			__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 0); //bottom green
+
 		}
+		__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, detectorCountdown); //bottom green
 
 		loopLength = (uint32_t)(knobVals[0] * 20000 + 10);
 
