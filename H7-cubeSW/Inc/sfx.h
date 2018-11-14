@@ -51,6 +51,7 @@ int32_t SFXVocoderTick(int32_t input);
 void SFXFormantFrame();
 int32_t SFXFormantTick(int32_t input);
 
+#if N_PITCHSHIFT
 void SFXPitchShiftFrame();
 int32_t SFXPitchShiftTick(int32_t input);
 
@@ -59,6 +60,7 @@ int32_t SFXAutotuneNearestTick(int32_t input);
 
 void SFXAutotuneAbsoluteFrame();
 int32_t SFXAutotuneAbsoluteTick(int32_t input);
+#endif
 
 void SFXDelayFrame();
 int32_t SFXDelayTick(int32_t input);

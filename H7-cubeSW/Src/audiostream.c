@@ -44,7 +44,6 @@ void clearNotes(void)
 		noteSounding[key] = 0;
 		noteHeld[key] = 0;
 		SFXNoteOff(key, 64);
-
 	}
 }
 
@@ -143,13 +142,9 @@ void audioFrame(uint16_t buffer_offset)
 {
 	int sample = 0;
 
-	for (int i = 0; i < 3; i++)
-	{
-		if (modeChain[i] != ModeNil)
-		{
-			frameFunctions[modeChain[i]]();
-		}
-	}
+
+	SFXVocoderFrame();
+
 	for (int cc=0; cc < numSamples; cc++)
 	{
 		for (int i = 0; i < NUM_KNOBS; i++)
@@ -157,54 +152,16 @@ void audioFrame(uint16_t buffer_offset)
 			knobVals[i] = tRampTick(knobRamps[i]);
 		}
 		sample = (int) (audioInBuffer[buffer_offset+(cc*2)] * inputLevel);
-		for (int i = 0; i < CHAIN_LENGTH; i++)
-		{
-			if (modeChain[i] != ModeNil)
-			{
-				sample = tickFunctions[modeChain[i]](sample);
-			}
-		}
+
+		sample = SFXVocoderTick(sample);
+
 		audioOutBuffer[buffer_offset + (cc*2)] = (int) (sample * outputLevel);
 	}
 }
 
 static void initFunctionPointers(void)
 {
-	frameFunctions[VocoderMode] = SFXVocoderFrame;
-	tickFunctions[VocoderMode] = SFXVocoderTick;
 
-	frameFunctions[FormantShiftMode] = SFXFormantFrame;
-	tickFunctions[FormantShiftMode] = SFXFormantTick;
-
-	frameFunctions[PitchShiftMode] = SFXPitchShiftFrame;
-	tickFunctions[PitchShiftMode] = SFXPitchShiftTick;
-
-	frameFunctions[AutotuneNearestMode] = SFXAutotuneNearestFrame;
-	tickFunctions[AutotuneNearestMode] = SFXAutotuneNearestTick;
-
-	frameFunctions[AutotuneAbsoluteMode] = SFXAutotuneAbsoluteFrame;
-	tickFunctions[AutotuneAbsoluteMode] = SFXAutotuneAbsoluteTick;
-
-	frameFunctions[DelayMode] = SFXDelayFrame;
-	tickFunctions[DelayMode] = SFXDelayTick;
-
-	frameFunctions[ReverbMode] = SFXReverbFrame;
-	tickFunctions[ReverbMode] = SFXReverbTick;
-
-	frameFunctions[BitcrusherMode] = SFXBitcrusherFrame;
-	tickFunctions[BitcrusherMode] = SFXBitcrusherTick;
-
-	frameFunctions[DrumboxMode] = SFXDrumboxFrame;
-	tickFunctions[DrumboxMode] = SFXDrumboxTick;
-
-	frameFunctions[SynthMode] = SFXSynthFrame;
-	tickFunctions[SynthMode] = SFXSynthTick;
-
-	frameFunctions[DrawMode] = SFXDrawFrame;
-	tickFunctions[DrawMode] = SFXDrawTick;
-
-	frameFunctions[LevelMode] = SFXLevelFrame;
-	tickFunctions[LevelMode] = SFXLevelTick;
 }
 
 

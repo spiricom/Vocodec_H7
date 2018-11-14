@@ -173,7 +173,7 @@ void SFXInit(float sr, int blocksize)
 	{
 		for (int j = 0; j < NUM_OSC; j++)
 		{
-			detuneSeeds[i][j] = randomNumber();
+			//detuneSeeds[i][j] = randomNumber();
 			osc[i][j] = tSawtoothInit();
 		}
 	}
@@ -183,44 +183,21 @@ void SFXInit(float sr, int blocksize)
 		ramp[i] = tRampInit(10.0f, 1);
 	}
 
-	p = tPeriod_init(inBuffer, outBuffer[0], 2048, PS_FRAME_SIZE);
-	tPeriod_setWindowSize(p, ENV_WINDOW_SIZE);
-	tPeriod_setHopSize(p, ENV_HOP_SIZE);
-
-	/* Initialize devices for pitch shifting */
-	for (int i = 0; i < NUM_SHIFTERS; ++i)
-	{
-		pshift[i] = tPitchShift_init(p, outBuffer[i], 2048);
-	}
-
 	lowpass = tSVFInit(SVFTypeLowpass, 20000.0f, 1.0f);
 	highpass = tSVFInit(SVFTypeHighpass, 20.0f, 1.0f);
-
-	rev = tPRCRevInit(1.0f);
 }
 
 void SFXVocoderFrame()
 {
 	tMPoly_setNumVoices(mpoly, numActiveVoices[VocoderMode]);
-	//if (knobLock[VocoderMode] == 0)
-	{
-		glideTimeVoc = (knobVals[0] * 999.0f) + 5.0f;
-		lpFreqVoc = ((knobVals[2]) * 17600.0f) + 400.0f;
-		for (int i = 0; i < tMPoly_getNumVoices(mpoly); i++)
-		{
-			detuneMaxVoc = (knobVals[3]) * freq[i] * 0.05f;
-		}
-	}
-	tMPoly_setPitchGlideTime(mpoly, glideTimeVoc);
-	tSVFSetFreq(lowpass, lpFreqVoc);
+
 	for (int i = 0; i < tMPoly_getNumVoices(mpoly); i++)
 	{
 		tRampSetDest(ramp[i], (tMPoly_getVelocity(mpoly, i) > 0));
 		calculateFreq(i);
 		for (int j = 0; j < NUM_OSC; j++)
 		{
-			detuneAmounts[i][j] = (detuneSeeds[i][j] * detuneMaxVoc) - (detuneMaxVoc * 0.5f);
-			tSawtoothSetFreq(osc[i][j], freq[i] + detuneAmounts[i][j]);
+			tSawtoothSetFreq(osc[i][j], freq[i]);
 		}
 	}
 }
@@ -269,6 +246,8 @@ int32_t SFXFormantTick(int32_t input)
 	return (int32_t) (output * TWO_TO_31 * 0.5f);
 }
 
+
+#if N_PITCHSHIFT
 void SFXPitchShiftFrame()
 {
 	if (knobLock[PitchShiftMode] == 0)
@@ -359,6 +338,7 @@ int32_t SFXAutotuneAbsoluteTick(int32_t input)
 
 	return (int32_t) (output * TWO_TO_31);
 }
+#endif
 
 void SFXDelayFrame()
 {
