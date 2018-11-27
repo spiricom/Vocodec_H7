@@ -198,7 +198,7 @@ float tTalkboxTick(tTalkbox* const v, float synth, float voice)
     v->FX = fx;
 
     float den = 1.0e-10f; //(float)pow(10.0f, -10.0f * param[4]);
-    if(fabs(v->d0) < den) v->d0 = 0.0f; //anti-denormal (doesn't seem necessary but P4?)
+    if(fabs(v->d0) < den) v->d0 = 0.0f; //anti-denormal (likely not necessary on STM32H7 if flush to zero is set)
     if(fabs(v->d1) < den) v->d1 = 0.0f;
     if(fabs(v->d2) < den) v->d2 = 0.0f;
     if(fabs(v->d3) < den) v->d3 = 0.0f;

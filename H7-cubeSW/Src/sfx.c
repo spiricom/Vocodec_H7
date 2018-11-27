@@ -173,7 +173,6 @@ void SFXInit(float sr, int blocksize)
 	{
 		for (int j = 0; j < NUM_OSC; j++)
 		{
-			//detuneSeeds[i][j] = randomNumber();
 			osc[i][j] = tSawtoothInit();
 		}
 	}
