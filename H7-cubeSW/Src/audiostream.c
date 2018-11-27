@@ -155,6 +155,8 @@ void audioFrame(uint16_t buffer_offset)
 
 		sample = SFXVocoderTick(sample);
 
+		outputLevel = knobVals[0] * .3;
+
 		audioOutBuffer[buffer_offset + (cc*2)] = (int) (sample * outputLevel);
 	}
 }

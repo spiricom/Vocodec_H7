@@ -164,8 +164,8 @@ void SFXInit(float sr, int blocksize)
 	fs = tFormantShifterInit();
 
 	mpoly = tMPoly_init(MPOLY_NUM_MAX_VOICES);
-	tMPoly_setPitchGlideTime(mpoly, 50.0f);
-	numActiveVoices[VocoderMode] = 8;
+	tMPoly_setPitchGlideTime(mpoly, 1.0f);
+	numActiveVoices[VocoderMode] = 6;
 	numActiveVoices[AutotuneAbsoluteMode] = 1;
 	numActiveVoices[SynthMode] = 1;
 	vocoder = tTalkboxInit();
@@ -220,7 +220,7 @@ int32_t SFXVocoderTick(int32_t input)
 
 	output *= INV_NUM_OSC * 0.5f;
 	output = tTalkboxTick(vocoder, output, sample);
-	output = tSVFTick(lowpass, output);
+	//output = tSVFTick(lowpass, output);
 	output = tanhf(output);
 
 	return (int32_t) (output * TWO_TO_31);
