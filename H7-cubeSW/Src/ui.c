@@ -3,6 +3,7 @@
 #include "audiostream.h"
 #include "gfx.h"
 #include "ui.h"
+#include "sfx.h"
 
 GFX theGFX;
 uint16_t* adcVals;
@@ -176,29 +177,29 @@ static void buttonWasPressed(VocodecButton button)
 	if (bypass)
 	{
 		sdd1306_invertDisplay(0);
-		if (sustainInverted)
+		if (transposed)
 		{
 			OLEDwriteString("DRY         ", 12, 0, FirstLine);
-			OLEDwriteString("SI", 2, 0, SecondLine);
+			OLEDwriteString("+2 +2 +2", 8, 0, SecondLine);
 		}
 		else
 		{
 			OLEDwriteString("DRY         ", 12, 0, FirstLine);
-			OLEDwriteString("  ", 2, 0, SecondLine);
+			OLEDwriteString("        ", 8, 0, SecondLine);
 		}
 	}
 	else
 	{
 		sdd1306_invertDisplay(1);
-		if (sustainInverted)
+		if (transposed)
 		{
 			OLEDwriteString("VOCODER     ", 12, 0, FirstLine);
-			OLEDwriteString("SI", 2, 0, SecondLine);
+			OLEDwriteString("+2 +2 +2", 8, 0, SecondLine);
 		}
 		else
 		{
 			OLEDwriteString("VOCODER     ", 12, 0, FirstLine);
-			OLEDwriteString("  ", 2, 0, SecondLine);
+			OLEDwriteString("        ", 8, 0, SecondLine);
 		}
 	}
 }
@@ -223,7 +224,8 @@ static void aButtonWasPressed()
 	}
 	else
 	{
-		toggleSustain();
+		toggleTranspose();
+		//toggleSustain();
 	}
 }
 
@@ -232,8 +234,8 @@ static void bButtonWasPressed()
 	if (buttonsHeld[ButtonA])
 	{
 		clearNotes();
-
-		toggleSustain();
+		toggleTranspose();
+		//toggleSustain();
 	}
 	else
 	{
@@ -357,6 +359,19 @@ void OLEDwriteFixedFloatLine(float input, uint8_t numDigits, uint8_t numDecimal,
 	OLEDwriteLine(oled_buffer, len, line);
 }
 
+void toggleTranspose()
+{
+	if (transposed == 0)
+	{
+		transposeFactor = 1.122462f;
+		transposed = 1;
+	}
+	else
+	{
+		transposeFactor = 1.0f;
+		transposed = 0;
+	}
+}
 static void initModeNames()
 {
 	modeNames[VocoderMode] = "VOCODER   ";

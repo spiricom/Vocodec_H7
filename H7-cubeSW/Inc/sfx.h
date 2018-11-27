@@ -30,6 +30,8 @@ extern int rateRatio;
 
 extern int sustain;
 extern int sustainInverted;
+extern float transposeFactor;
+extern int transposed;
 extern int noteSounding[128];
 extern int noteDown[128];
 

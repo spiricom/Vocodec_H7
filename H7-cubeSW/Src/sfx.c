@@ -37,6 +37,8 @@ float FeedbackLookup[FEEDBACK_LOOKUP_SIZE] = { 0.0f, 0.8f, .999f, 1.0f, 1.03f };
 float DelayLookup[DELAY_LOOKUP_SIZE] = { 50.f, 180.f, 1400.f, 16300.f };
 float feedbackDelayPeriod[NUM_FB_DELAY_TABLES];
 //const float *feedbackDelayTable[NUM_FB_DELAY_TABLES] = { FB1, FB2, FB3, FB4, FB5, FB6, FB7, FB8 };
+float transposeFactor = 1.0;
+int transposed  = 0;
 
 int count = 0;
 
@@ -196,7 +198,7 @@ void SFXVocoderFrame()
 		calculateFreq(i);
 		for (int j = 0; j < NUM_OSC; j++)
 		{
-			tSawtoothSetFreq(osc[i][j], freq[i]);
+			tSawtoothSetFreq(osc[i][j], freq[i] * transposeFactor);
 		}
 	}
 }
