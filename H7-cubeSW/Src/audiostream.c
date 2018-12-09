@@ -27,7 +27,7 @@ float inBuffer[NUM_SHIFTERS][4096];
 float outBuffer[NUM_SHIFTERS][4096];
 float pitchFactor = 1.0f;
 
-
+tCycle* mySine;
 tPitchShifter* ps[NUM_SHIFTERS];
 tRamp* ramp[NUM_SHIFTERS];
 
@@ -53,6 +53,8 @@ void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTy
 	transmit_status = HAL_SAI_Transmit_DMA(hsaiOut, (uint8_t *)&audioOutBuffer[0], AUDIO_BUFFER_SIZE);
 	receive_status = HAL_SAI_Receive_DMA(hsaiIn, (uint8_t *)&audioInBuffer[0], AUDIO_BUFFER_SIZE);
 
+	mySine = tCycleInit();
+	tCycleSetFreq(mySine, 110.f);
 	/* Initialize devices for pitch shifting */
 	for (int i = 0; i < NUM_SHIFTERS; ++i)
 	{
@@ -91,17 +93,17 @@ float audioTickL(float audioIn)
 {
 	sample = 0.0f;
 
+	sample = tCycleTick(mySine);
+	//pitchFactor = ((adcVals[1]>> 4) * INV_TWO_TO_12) * 3.5f + 0.5f;
 
-	pitchFactor = ((adcVals[1]>> 4) * INV_TWO_TO_12) * 3.5f + 0.5f;
+	//tRampSetDest(ramp[0], pitchFactor);
 
-	tRampSetDest(ramp[0], pitchFactor);
-
-	tPitchShifter_setPitchFactor(ps[0], tRampTick(ramp[0]));
+	//tPitchShifter_setPitchFactor(ps[0], tRampTick(ramp[0]));
 
 	//or you could just set the pitch factor directly like this (since you'll be taking it from some SPI data eventually)
 	//tPitchShifter_setPitchFactor(ps[0], 2.0f);
 
-	sample = tPitchShifter_tick(ps[0], audioIn);
+	//sample = tPitchShifter_tick(ps[0], audioIn);
 
 	return sample;
 }
@@ -109,17 +111,17 @@ float audioTickL(float audioIn)
 float audioTickR(float audioIn)
 {
 	sample = 0.0f;
+	sample = tCycleTick(mySine);
+	//pitchFactor = ((adcVals[0] >> 4) * INV_TWO_TO_12) * 3.5f + 0.5f;
 
-	pitchFactor = ((adcVals[0] >> 4) * INV_TWO_TO_12) * 3.5f + 0.5f;
+	//tRampSetDest(ramp[1], pitchFactor);
 
-	tRampSetDest(ramp[1], pitchFactor);
-
-	tPitchShifter_setPitchFactor(ps[1], tRampTick(ramp[1]));
+	//tPitchShifter_setPitchFactor(ps[1], tRampTick(ramp[1]));
 
 	//or you could just set the pitch factor directly like this (since you'll be taking it from some SPI data eventually)
 	//tPitchShifter_setPitchFactor(ps[0], 0.5f);
 
-	sample = tPitchShifter_tick(ps[1], audioIn);
+	//sample = tPitchShifter_tick(ps[1], audioIn);
 
 	return sample;
 }
