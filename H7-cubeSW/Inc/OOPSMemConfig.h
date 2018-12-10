@@ -19,10 +19,9 @@
  *                                                                                                       *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#define NUM_VOICES 4
-#define NUM_SHIFTERS 2
-#define MPOLY_NUM_MAX_VOICES 16
 
+#define MPOLY_NUM_MAX_VOICES 0
+#define NUM_VOICES 0
 #define SHAPER1_TABLE_SIZE 65536
 extern const float shaper1[SHAPER1_TABLE_SIZE];
 
@@ -33,16 +32,16 @@ extern const float shaper1[SHAPER1_TABLE_SIZE];
 #define     N_808SNARE           0
 #define     N_808HIHAT           0
 #define     N_808COWBELL         0
-#define     N_COMPRESSOR         0
+#define     N_COMPRESSOR         1
 #define     N_PRCREV             0
 #define     N_NREV               0
-#define     N_PITCHSHIFTER       NUM_SHIFTERS
+#define     N_PITCHSHIFTER       0
 #define     N_PLUCK              0
 #define     N_STIFKARP           0
 #define     N_NEURON             0
 #define     N_PHASOR             0
 #define     N_CYCLE              1
-#define     N_SAWTOOTH           NUM_VOICES
+#define     N_SAWTOOTH           1
 #define     N_TRIANGLE           0
 #define     N_SQUARE             0
 #define     N_NOISE              0 + (1 * N_STIFKARP) + (1 * N_PLUCK) // StifKarp and Pluck each contain 1 Noise component.

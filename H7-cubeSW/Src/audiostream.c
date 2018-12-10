@@ -23,13 +23,10 @@ float audioTickR(float audioIn);
 HAL_StatusTypeDef transmit_status;
 HAL_StatusTypeDef receive_status;
 
-float inBuffer[NUM_SHIFTERS][4096];
-float outBuffer[NUM_SHIFTERS][4096];
-float pitchFactor = 1.0f;
+
 
 tCycle* mySine;
-tPitchShifter* ps[NUM_SHIFTERS];
-tRamp* ramp[NUM_SHIFTERS];
+tRamp* ramp[10];
 
 typedef enum BOOL {
 	FALSE = 0,
@@ -54,20 +51,11 @@ void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTy
 	receive_status = HAL_SAI_Receive_DMA(hsaiIn, (uint8_t *)&audioInBuffer[0], AUDIO_BUFFER_SIZE);
 
 	mySine = tCycleInit();
-	tCycleSetFreq(mySine, 110.f);
-	/* Initialize devices for pitch shifting */
-	for (int i = 0; i < NUM_SHIFTERS; ++i)
-	{
-		ps[i] = tPitchShifter_init(inBuffer[i], outBuffer[i], 4096, 1024);
-		tPitchShifter_setWindowSize(ps[i], 1024);
-		tPitchShifter_setHopSize(ps[i], 256);
-		tPitchShifter_setPitchFactor(ps[i], 1.0f);
-		//the ramp to smooth the pitch shifting factor (the value by which to pitch shift) to avoid glitches due to noisy parameter data
-		//first argument is time to ramp in milliseconds (currently 7ms for very fast ramp)
-		//second argument is number of samples per tick (how often you check the ramp - in this case we update and check every sample, so the value is 1)
-		ramp[i] = tRampInit(7.0f, 1);
+	tCycleSetFreq(mySine, 880.f);
 
-	}
+
+	ramp[0] = tRampInit(7.0f, 1);
+
 }
 
 void audioFrame(uint16_t buffer_offset)
@@ -93,7 +81,7 @@ float audioTickL(float audioIn)
 {
 	sample = 0.0f;
 
-	sample = tCycleTick(mySine);
+	//sample = tCycleTick(mySine);
 	//pitchFactor = ((adcVals[1]>> 4) * INV_TWO_TO_12) * 3.5f + 0.5f;
 
 	//tRampSetDest(ramp[0], pitchFactor);
@@ -112,6 +100,7 @@ float audioTickR(float audioIn)
 {
 	sample = 0.0f;
 	sample = tCycleTick(mySine);
+	sample *= OOPS_clip(0.0f, (adcVals[1] * 0.0000152590218f) - 0.1f, 1.0f);
 	//pitchFactor = ((adcVals[0] >> 4) * INV_TWO_TO_12) * 3.5f + 0.5f;
 
 	//tRampSetDest(ramp[1], pitchFactor);

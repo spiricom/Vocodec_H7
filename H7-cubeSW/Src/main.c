@@ -60,6 +60,7 @@
 #include "tim.h"
 #include "usb_host.h"
 #include "gpio.h"
+#include "lcd.h"
 
 /* USER CODE BEGIN Includes */
 #include "audiostream.h"
@@ -137,6 +138,7 @@ int main(void)
   //MX_QUADSPI_Init();
   MX_RNG_Init();
   MX_SAI1_Init();
+
   //MX_SPI4_Init();
  // MX_I2C4_Init();
 
@@ -156,14 +158,76 @@ int main(void)
 
 	}
 	audioInit(&hi2c2, &hsai_BlockA1, &hsai_BlockB1, &hrng, ((uint16_t*)&myADC));
-	
 
+	HAL_Delay(1000);
+	LCD_init(&hi2c2);
+
+
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET); //red LED 1
+
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_RESET); //red LED 2
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
+	  //ADC values are =
+	  // [0] = joystick
+	  // [1] = knob
+	  // [2] = pedal
+	  // [3] = breath
+	  // [4] = slide
+
+	 HAL_Delay(10);
+	 LCD_home(&hi2c2);
+	 LCD_sendInteger(&hi2c2, myADC[0], 5); //
+	 LCD_sendChar(&hi2c2, ' ');
+	 LCD_sendInteger(&hi2c2, myADC[1], 5);
+	 LCD_sendChar(&hi2c2, ' ');
+	 LCD_setCursor(&hi2c2, 0x40);
+	 LCD_sendInteger(&hi2c2, myADC[2], 5);
+	 LCD_sendChar(&hi2c2, ' ');
+	 LCD_sendInteger(&hi2c2, myADC[3], 5);
+	 LCD_sendChar(&hi2c2, ' ');
+	 LCD_sendChar(&hi2c2, ' ');
+	 //button1
+	if (!HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_13))
+	{
+		//if (!isButtonOneDown)	buttonOneDown();
+		LCD_sendChar(&hi2c2, '1');
+	}
+	else
+	{
+		LCD_sendChar(&hi2c2, ' ');
+		//if (isButtonOneDown) 	buttonOneUp();
+	}
+
+
+	//button2
+	if (!HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_7))
+	{
+		//if (!isButtonTwoDown)	buttonTwoDown();
+		LCD_sendChar(&hi2c2, '2');
+	}
+	else
+	{
+		LCD_sendChar(&hi2c2, ' ');
+		//if (isButtonTwoDown)	buttonTwoUp();
+	}
+
+	//P button
+	if (!HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_9))
+	{
+		LCD_sendChar(&hi2c2, 'P');
+		//if (!isPresetButtonDown) 	presetButtonDown();
+	}
+	else
+	{
+		LCD_sendChar(&hi2c2, ' ');
+		//if (isPresetButtonDown)		presetButtonUp();
+	}
 
   /* USER CODE END WHILE */
 
