@@ -496,6 +496,7 @@ static USBH_StatusTypeDef USBH_AUDIO_ClassRequest(USBH_HandleTypeDef *phost)
     AUDIO_Handle->play_state = AUDIO_PLAYBACK_INIT;
     phost->pUser(phost, HOST_USER_CLASS_ACTIVE); 
     status  = USBH_OK;    
+    break;
 #if (USBH_USE_OS == 1)
       osMessagePut ( phost->os_event, USBH_CLASS_EVENT, 0);
 #endif
@@ -585,6 +586,7 @@ static USBH_StatusTypeDef USBH_AUDIO_CSRequest(USBH_HandleTypeDef *phost, uint8_
  
   case AUDIO_REQ_CS_IDLE:
     status = USBH_OK;
+    break;
   default:
     break;
   }

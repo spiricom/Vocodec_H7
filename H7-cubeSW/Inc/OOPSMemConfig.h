@@ -52,7 +52,7 @@ extern const float shaper1[SHAPER1_TABLE_SIZE];
 #define     N_TWOZERO            0
 #define     N_POLEZERO           0 + (1 * N_NEURON)
 #define     N_BIQUAD             0 + (4 * N_STIFKARP)
-#define     N_SVF                0 + 32*N_BUTTERWORTH
+#define     N_SVF                1 + 32*N_BUTTERWORTH
 #define     N_SVFE               0
 #define     N_HIGHPASS           0 + (1 * N_PITCHSHIFTER)
 #define     N_DELAY              0 + (14 * N_NREV) + (3 * N_PRCREV)

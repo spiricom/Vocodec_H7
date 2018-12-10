@@ -38,6 +38,50 @@
 #define AUDIO_BUFFER_SIZE     AUDIO_FRAME_SIZE * 4 //number of samples in the whole data structure (four times the audio frame size because of stereo and also double-buffering/ping-ponging)
 
 
+typedef enum FTMode
+{
+	FTFeedback = 0,
+	FTSynthesisOne,
+	FTModeNil,
+	FTModeCount = FTModeNil
+} FTMode;
+
+typedef enum KnobMode
+{
+	SlideTune = 0,
+	MasterTune = 1,
+	OctaveTune = 2,
+	DelayTune = 3,
+	KnobModeNil = 4,
+	KnobModeCount = 5
+} KnobMode;
+
+typedef enum HarmonicMode
+{
+	CaraMode = 0,
+	RajeevMode,
+	JennyMode,
+	HarmonicModeNil,
+	HarmonicModeCount = HarmonicModeNil
+} HarmonicMode;
+
+extern HarmonicMode hMode;
+
+extern int octave;
+extern float position;
+extern float firstPositionValue;
+extern uint16_t knobValue;
+extern float knobValueToUse;
+extern uint16_t slideValue;
+
+extern FTMode ftMode;
+extern KnobMode kMode;
+extern tRamp* adc[5];
+
+extern float intHarmonic;
+extern float floatHarmonic;
+extern float fundamental;
+extern float customFundamental;
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum
@@ -47,8 +91,22 @@ typedef enum
   BUFFER_OFFSET_FULL,     
 }BUFFER_StateTypeDef;
 
+extern float fundamental_hz;
+extern float fundamental_cm;
+extern float fundamental_m;
+extern float inv_fundamental_m;
+extern float cutoff_offset;
+extern float intPeak;
+extern float floatPeak;
+extern float testDelay;
+extern float slide_tune;
+extern float slideLengthM;
+extern float intPeak;
 
+extern float valPerM;
+extern float mPerVal;
 
+#define SLIDE_BITS 6
 
 #define SAMPLE_RATE 48000.0f
 #define INV_SAMPLE_RATE 1.f/SAMPLE_RATE 
