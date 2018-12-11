@@ -74,7 +74,7 @@ extern const float shaper1[SHAPER1_TABLE_SIZE];
 #define     N_LOCKHARTWAVEFOLDER 0
 #define     N_FORMANTSHIFTER     0
 
-#define     DELAY_LENGTH        16000   // The maximum delay length of all Delay/DelayL/DelayA components.
+#define     DELAY_LENGTH        2000   // The maximum delay length of all Delay/DelayL/DelayA components.
                                             // Feel free to change to suit memory constraints or desired delay max length / functionality.
 
 #define TALKBOX_BUFFER_LENGTH   1600    // Every talkbox instance introduces 5 buffers of this size

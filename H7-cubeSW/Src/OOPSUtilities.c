@@ -202,7 +202,7 @@ tCompressor*    tCompressorInit(void)
     c->tauAttack = 100;
     c->tauRelease = 100;
 	
-	  c->isActive = OFALSE;
+	c->isActive = OFALSE;
     
     c->T = 0.0f; // Threshold
     c->R = 0.5f; // compression Ratio

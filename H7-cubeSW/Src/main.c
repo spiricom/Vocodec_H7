@@ -91,6 +91,38 @@ void MPU_Conf(void);
 
 /* USER CODE BEGIN 0 */
 
+int isButtonOneDown, isButtonTwoDown;
+
+static void buttonOneDown(void)
+{
+	isButtonOneDown = 1;
+	ftMode = FTFeedback;
+
+	LCD_setCursor(&hi2c2, 0x40);
+	LCD_sendChar(&hi2c2, 'F');
+	LCD_sendChar(&hi2c2, 'B');
+}
+
+static void buttonOneUp(void)
+{
+	isButtonOneDown = 0;
+}
+
+static void buttonTwoDown(void)
+{
+	isButtonTwoDown = 1;
+	ftMode = FTSynthesisOne;
+
+	LCD_setCursor(&hi2c2, 0x40);
+	LCD_sendChar(&hi2c2, 'S');
+	LCD_sendChar(&hi2c2, '1');
+}
+
+static void buttonTwoUp(void)
+{
+	isButtonTwoDown = 0;
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -98,6 +130,8 @@ void MPU_Conf(void);
   *
   * @retval None
   */
+
+
 int main(void)
 {
   /* USER CODE BEGIN 1 */
@@ -183,10 +217,7 @@ int main(void)
 	 HAL_Delay(10);
 	 LCD_home(&hi2c2);
 
-
-	 //LCD_sendInteger(&hi2c2, myADC[0], 5); //
 	 LCD_sendFixedFloat(&hi2c2, Q, 5, 1);
-
 	 LCD_sendChar(&hi2c2, ' ');
 
 	 //LCD_sendFixedFloat(&hi2c2, dist, 3, 1);
@@ -195,26 +226,26 @@ int main(void)
 	 //button1
 	if (!HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_13))
 	{
-		//if (!isButtonOneDown)	buttonOneDown();
+		if (!isButtonOneDown)	buttonOneDown();
 		LCD_sendChar(&hi2c2, '1');
 	}
 	else
 	{
 		LCD_sendChar(&hi2c2, ' ');
-		//if (isButtonOneDown) 	buttonOneUp();
+		if (isButtonOneDown) 	buttonOneUp();
 	}
 
 
 	//button2
 	if (!HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_7))
 	{
-		//if (!isButtonTwoDown)	buttonTwoDown();
+		if (!isButtonTwoDown)	buttonTwoDown();
 		LCD_sendChar(&hi2c2, '2');
 	}
 	else
 	{
 		LCD_sendChar(&hi2c2, ' ');
-		//if (isButtonTwoDown)	buttonTwoUp();
+		if (isButtonTwoDown)	buttonTwoUp();
 	}
 
 	//P button
