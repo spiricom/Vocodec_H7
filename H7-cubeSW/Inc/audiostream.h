@@ -103,10 +103,13 @@ extern float slide_tune;
 extern float slideLengthM;
 extern float intPeak;
 
+extern float Q;
+extern float dist;
+
 extern float valPerM;
 extern float mPerVal;
 
-#define SLIDE_BITS 6
+#define SLIDE_BITS 16
 
 #define SAMPLE_RATE 48000.0f
 #define INV_SAMPLE_RATE 1.f/SAMPLE_RATE 

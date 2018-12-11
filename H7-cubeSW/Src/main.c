@@ -182,16 +182,16 @@ int main(void)
 
 	 HAL_Delay(10);
 	 LCD_home(&hi2c2);
-	 LCD_sendInteger(&hi2c2, myADC[0], 5); //
+
+
+	 //LCD_sendInteger(&hi2c2, myADC[0], 5); //
+	 LCD_sendFixedFloat(&hi2c2, Q, 5, 1);
+
 	 LCD_sendChar(&hi2c2, ' ');
-	 LCD_sendInteger(&hi2c2, myADC[1], 5);
-	 LCD_sendChar(&hi2c2, ' ');
-	 LCD_setCursor(&hi2c2, 0x40);
-	 LCD_sendInteger(&hi2c2, myADC[2], 5);
-	 LCD_sendChar(&hi2c2, ' ');
-	 LCD_sendInteger(&hi2c2, myADC[3], 5);
-	 LCD_sendChar(&hi2c2, ' ');
-	 LCD_sendChar(&hi2c2, ' ');
+
+	 //LCD_sendFixedFloat(&hi2c2, dist, 3, 1);
+
+	 //LCD_sendInteger(&hi2c2, myADC[1], 5);
 	 //button1
 	if (!HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_13))
 	{

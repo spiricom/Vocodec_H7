@@ -690,7 +690,7 @@ tSVF*    tSVFInit(SVFType type, float freq, float Q)
     
     float a1,a2,a3,g,k;
     g = tanf(PI * freq * oops.invSampleRate);
-    k = 1.0f/OOPS_clip(0.01f,Q,10.0f);
+    k = 1.0f/OOPS_clip(0.01f,Q,20000.0f);
     a1 = 1.0f/(1.0f+g*(g+k));
     a2 = g*a1;
     a3 = g*a2;
@@ -717,7 +717,7 @@ int     tSVFSetFreq(tSVF* const svf, float freq)
 
 int     tSVFSetQ(tSVF* const svf, float Q)
 {
-    svf->k = 1.0f/OOPS_clip(0.01f,Q,10.0f);
+    svf->k = 1.0f/OOPS_clip(0.01f, Q, 20000.0f);
     svf->a1 = 1.0f/(1.0f + svf->g * (svf->g + svf->k));
     svf->a2 = svf->g * svf->a1;
     svf->a3 = svf->g * svf->a2;
