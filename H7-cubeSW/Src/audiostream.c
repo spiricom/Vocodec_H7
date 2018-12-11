@@ -315,7 +315,7 @@ float knob, Q;
 float audioTickFeedback(float audioIn)
 {
 	float pedal = tRampTick(adc[ADCPedal]);
-	if (pedal < 0.05) pedal = 0.0f;
+	pedal = OOPS_clip(0.0f, pedal - 0.05f, 1.0f);
 
 	sample = 0.0f;
 
@@ -325,7 +325,7 @@ float audioTickFeedback(float audioIn)
 
 	knob = tRampTick(adc[ADCKnob]);
 
-	Q = OOPS_clip(0.5f, (knob - 0.1) * 1500.0f, 1500.0);
+	Q = OOPS_clip(0.5f, (knob - 0.1) * 300.0f, 300.0);
 
 	tRampSetDest(qRamp, Q);
 
@@ -361,6 +361,8 @@ float audioTickFeedback(float audioIn)
 	//sample *= rampedBreath;
 
 	sample *= pedal;
+
+	sample = OOPS_clip(-1.0f, sample * 20.0f, 1.0f);
 	//sample *= 0.1f;
 
 	//sample = tCycleTick(sine) * 0.5f * pedal;
