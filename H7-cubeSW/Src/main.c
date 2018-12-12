@@ -217,7 +217,7 @@ int main(void)
 	 HAL_Delay(10);
 	 LCD_home(&hi2c2);
 
-	 LCD_sendFixedFloat(&hi2c2, Q, 5, 1);
+	 LCD_sendInteger(&hi2c2, intHarmonic, 2);
 	 LCD_sendChar(&hi2c2, ' ');
 
 	 //LCD_sendFixedFloat(&hi2c2, dist, 3, 1);

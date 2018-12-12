@@ -9,7 +9,7 @@
 #define ADCBreath 3
 #define ADCSlide 4
 
-#define NUM_HARMONICS 15.0f
+#define NUM_HARMONICS 16.0f
 
 #define ACOUSTIC_DELAY				132
 
@@ -41,7 +41,7 @@ HAL_StatusTypeDef transmit_status;
 HAL_StatusTypeDef receive_status;
 
 float LN2;
-float amp_mult = 5.0f;
+float amp_mult = 0.75f;
 
 float valPerM;
 float mPerVal;
@@ -148,7 +148,7 @@ void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTy
 	adc[ADCJoyY] = tRampInit(18, 1);
 	adc[ADCKnob] = tRampInit(5,1);
 	adc[ADCPedal] = tRampInit(18, 1);
-	adc[ADCBreath] = tRampInit(19, 1);
+	adc[ADCBreath] = tRampInit(1, 1);
 	adc[ADCSlide] = tRampInit(20, AUDIO_FRAME_SIZE);
 
 	/*
@@ -249,7 +249,8 @@ static void calculatePeaks(void)
 	float x = 12.0f * logf(slideLength / fundamental_m) * INV_LOG2;
 	fundamental = fundamental_hz * powf(2.0f, (-x * INV_TWELVE));
 
-	floatHarmonic = NUM_HARMONICS * (1.0f - tRampTick(adc[ADCJoyY])) + 1.0f;
+	floatHarmonic = tRampTick(adc[ADCJoyY]) * 2.0f - 1.0f;
+	floatHarmonic = (floatHarmonic < 0.0f) ? 1.0f : (floatHarmonic * NUM_HARMONICS + 1.0f);
 
 	if (((floatHarmonic - intHarmonic) > (harmonicHysteresis)) || ((floatHarmonic - intHarmonic) < ( -1.0f * harmonicHysteresis)))
 	{
