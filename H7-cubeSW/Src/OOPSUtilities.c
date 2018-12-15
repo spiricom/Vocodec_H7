@@ -109,7 +109,7 @@ tEnv* tEnvInit(int ws, int hs, int bs)
     
     for (i = 0; i < MAXOVERLAP; i++) x->x_sumbuf[i] = 0;
     for (i = 0; i < npoints; i++)
-        x->buf[i] = (1.0f - cos((2 * 3.14159f * i) / npoints))/npoints;
+        x->buf[i] = (1.0f - cos((2 * PI * i) / npoints))/npoints;
     for (; i < npoints+INITVSTAKEN; i++) x->buf[i] = 0;
     
     x->x_f = 0;
@@ -202,7 +202,7 @@ tCompressor*    tCompressorInit(void)
     c->tauAttack = 100;
     c->tauRelease = 100;
 	
-	c->isActive = OFALSE;
+	  c->isActive = OFALSE;
     
     c->T = 0.0f; // Threshold
     c->R = 0.5f; // compression Ratio
@@ -1226,15 +1226,16 @@ void tMPoly_pitchBend(tMPoly* poly, int pitchBend)
     poly->pitchBend = pitchBend;
 }
 
-void tMPoly_noteOn(tMPoly* poly, int note, uint8_t vel)
+int tMPoly_noteOn(tMPoly* poly, int note, uint8_t vel)
 {
     // if not in keymap or already on stack, dont do anything. else, add that note.
-    if (tStack_contains(poly->stack, note) >= 0) return;
+    if (tStack_contains(poly->stack, note) >= 0) return -1;
     else
     {
         tMPoly_orderedAddToStack(poly, note);
         tStack_add(poly->stack, note);
         
+        int alteredVoice = -1;
         oBool found = OFALSE;
         for (int i = 0; i < poly->numVoices; i++)
         {
@@ -1260,6 +1261,7 @@ void tMPoly_noteOn(tMPoly* poly, int note, uint8_t vel)
                 
                 tRampSetDest(poly->ramp[i], poly->voices[i][0]);
                 
+                alteredVoice = i;
                 break;
             }
         }
@@ -1284,10 +1286,13 @@ void tMPoly_noteOn(tMPoly* poly, int note, uint8_t vel)
                     tRampSetTime(poly->ramp[whichVoice], poly->glideTime);
                     tRampSetDest(poly->ramp[whichVoice], poly->voices[whichVoice][0]);
                     
+                    alteredVoice = whichVoice;
+
 					break;
         		}
         	}
         }
+        return alteredVoice;
     }
 }
 
@@ -1390,6 +1395,7 @@ void tMPoly_setNumVoices(tMPoly* poly, uint8_t numVoices)
 
 void tMPoly_setPitchGlideTime(tMPoly* poly, float t)
 {
+	if (poly->glideTime == t) return;
     poly->glideTime = t;
     for (int i = 0; i < MPOLY_NUM_MAX_VOICES; ++i)
     {
@@ -1762,23 +1768,20 @@ static float snac_spectralpeak(tSNAC *s, float periodlength);
 /******************************************************************************/
 
 
-tSNAC* tSNAC_init(int framearg, int overlaparg)
+tSNAC* tSNAC_init(int overlaparg)
 {
     
     tSNAC *s = &oops.tSNACRegistry[oops.registryIndex[T_SNAC]++];
 
-    s->inputbuf = NULL;
-    s->processbuf = NULL;
-    s->spectrumbuf = NULL;
-    s->biasbuf = NULL;
     s->biasfactor = DEFBIAS;
     s->timeindex = 0;
     s->periodindex = 0;
     s->periodlength = 0.;
     s->fidelity = 0.;
     s->minrms = DEFMINRMS;
+    s->framesize = SNAC_FRAME_SIZE;
     
-    tSNAC_setFramesize(s, framearg);
+    snac_biasbuf(s);
     tSNAC_setOverlap(s, overlaparg);
     
     return s;
@@ -1808,34 +1811,6 @@ void tSNAC_ioSamples(tSNAC *s, float *in, float *out, int size)
     s->timeindex = timeindex;
     return;
 }
-
-
-// set framesize and (re)allocate buffers accordingly
-void tSNAC_setFramesize(tSNAC *s, int frame)
-{
-    int n;
-    
-    if(!((frame==128)|(frame==256)|(frame==512)|(frame==1024)|(frame==2048)))
-        frame = DEFFRAMESIZE;
-    s->framesize = n = frame;
-    
-    s->inputbuf = (float*)realloc(s->inputbuf, s->framesize * sizeof(float));
-    float *inputbuf = s->inputbuf;
-    while(n--) *inputbuf++ = 0;
-    
-    s->processbuf = (float*)realloc(s->processbuf,
-                                      s->framesize * 2 * sizeof(float));
-    
-    s->spectrumbuf = (float*)realloc(s->spectrumbuf,
-                                       s->framesize * 0.5 * sizeof(float));
-    
-    s->biasbuf = (float*)realloc(s->biasbuf, s->framesize * sizeof(float));
-    snac_biasbuf(s);
-    
-    s->timeindex = 0;
-    return;
-}
-
 
 void tSNAC_setOverlap(tSNAC *s, int lap)
 {
@@ -2204,7 +2179,7 @@ static void atkdtk_init(tAtkDtk *a, int blocksize, int atk, int rel)
     a->env = 0;
     a->blocksize = blocksize;
     a->threshold = DEFTHRESHOLD;
-    a->samplerate = DEFSAMPLERATE;
+    a->samplerate = oops.SampleRate;
     a->prevAmp = 0;
     
     a->env = 0;

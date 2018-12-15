@@ -90,7 +90,7 @@ tMPoly*     tMPoly_init(int numVoices);
 void        tMPoly_tick(tMPoly* const);
 
 //ADDING A NOTE
-void        tMPoly_noteOn(tMPoly* const, int note, uint8_t vel);
+int        tMPoly_noteOn(tMPoly* const, int note, uint8_t vel);
 
 int         tMPoly_noteOff(tMPoly* const, uint8_t note);
 
@@ -129,10 +129,9 @@ void tSOLAD_setReadLag(tSOLAD *w, float readlag);
 void tSOLAD_resetState(tSOLAD *w);
 
 /* tSNAC: */
-tSNAC *tSNAC_init(int periodarg, int overlaparg);    // constructor
+tSNAC *tSNAC_init(int overlaparg);    // constructor
 
 void tSNAC_ioSamples(tSNAC *s, float *in, float *out, int size);
-void tSNAC_setFramesize(tSNAC *s, int frame);
 void tSNAC_setOverlap(tSNAC *s, int lap);
 void tSNAC_setBias(tSNAC *s, float bias);
 void tSNAC_setMinRMS(tSNAC *s, float rms);

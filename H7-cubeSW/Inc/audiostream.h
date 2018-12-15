@@ -30,58 +30,21 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32h7xx_hal.h"
-
+#include "gfx.h"
+#include "sfx.h"
+#include "ui.h"
 #include "OOPS.h"
 
-#define AUDIO_FRAME_SIZE     16
+#define AUDIO_FRAME_SIZE      196
 #define HALF_BUFFER_SIZE      AUDIO_FRAME_SIZE * 2 //number of samples per half of the "double-buffer" (twice the audio frame size because there are interleaved samples for both left and right channels)
 #define AUDIO_BUFFER_SIZE     AUDIO_FRAME_SIZE * 4 //number of samples in the whole data structure (four times the audio frame size because of stereo and also double-buffering/ping-ponging)
 
+extern int32_t audioOutBuffer[AUDIO_BUFFER_SIZE];
 
-typedef enum FTMode
-{
-	FTFeedback = 0,
-	FTSynthesisOne,
-	FTModeNil,
-	FTModeCount = FTModeNil
-} FTMode;
-
-typedef enum KnobMode
-{
-	SlideTune = 0,
-	MasterTune = 1,
-	OctaveTune = 2,
-	DelayTune = 3,
-	KnobModeNil = 4,
-	KnobModeCount = 5
-} KnobMode;
-
-typedef enum HarmonicMode
-{
-	CaraMode = 0,
-	RajeevMode,
-	JennyMode,
-	HarmonicModeNil,
-	HarmonicModeCount = HarmonicModeNil
-} HarmonicMode;
-
-extern HarmonicMode hMode;
-
-extern int octave;
-extern float position;
-extern float firstPositionValue;
-extern uint16_t knobValue;
-extern float knobValueToUse;
-extern uint16_t slideValue;
-
-extern FTMode ftMode;
-extern KnobMode kMode;
-extern tRamp* adc[5];
-
-extern float intHarmonic;
-extern float floatHarmonic;
-extern float fundamental;
-extern float customFundamental;
+// MIDI FUNCTIONS
+void noteOn(int key, int velocity);
+void noteOff(int key, int velocity);
+void ctrlInput(int ctrl, int value);
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum
@@ -90,6 +53,27 @@ typedef enum
   BUFFER_OFFSET_HALF,  
   BUFFER_OFFSET_FULL,     
 }BUFFER_StateTypeDef;
+
+void slideValueChanged(uint16_t value);
+
+void knobValueChanged(uint16_t value);
+
+void buttonOneDown(void);
+
+void buttonOneUp(void);
+
+void buttonTwoDown(void);
+
+void buttonTwoUp(void);
+
+void presetButtonDown(void);
+
+void presetButtonUp(void);
+
+void setFundamental(float fund);
+
+
+/* Exported constants --------------------------------------------------------*/
 
 extern float fundamental_hz;
 extern float fundamental_cm;
@@ -100,18 +84,16 @@ extern float intPeak;
 extern float floatPeak;
 extern float testDelay;
 extern float slide_tune;
-extern float slideLengthM;
-extern float intPeak;
-
-extern float Q;
-extern float dist;
 
 extern float valPerM;
 extern float mPerVal;
 
-#define SLIDE_BITS 16
+#ifdef SAMPLERATE96K
+#define SAMPLE_RATE 96000.f
+#else
+#define SAMPLE_RATE 48000.f
+#endif
 
-#define SAMPLE_RATE 48000.0f
 #define INV_SAMPLE_RATE 1.f/SAMPLE_RATE 
 #define SAMPLE_RATE_MS (SAMPLE_RATE / 1000.f)
 #define INV_SR_MS 1.f/SAMPLE_RATE_MS
@@ -119,10 +101,13 @@ extern float mPerVal;
 #define SAMPLE_RATE_DIV_PARAMS_MS (SAMPLE_RATE_DIV_PARAMS / 1000.f)
 #define INV_SR_DIV_PARAMS_MS 1.f/SAMPLE_RATE_DIV_PARAMS_MS
 
+extern uint16_t knobValue;
+extern int knobMoved;
+extern int calibrated;
 
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
-void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTypeDef* hsaiIn, RNG_HandleTypeDef* hrandom, uint16_t* myADCArray);
+void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTypeDef* hsaiIn, RNG_HandleTypeDef* hrandom);
 
 void audioFrame(uint16_t buffer_offset);
 

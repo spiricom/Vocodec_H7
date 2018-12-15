@@ -112,6 +112,8 @@ float       tHighpassGetFreq   (tHighpass*  const);
 
 tFormantShifter*    tFormantShifterInit     (void);
 float       tFormantShifterTick    (tFormantShifter* const, float input, float fwarp);
+float       tFormantShifterRemove    (tFormantShifter* const, float input);
+float       tFormantShifterAdd       (tFormantShifter* const, float input, float fwarp);
 void        tFormantShifter_ioSamples   (tFormantShifter* const, float* in, float* out, int size, float fwarp);
 
 tPitchShifter*    tPitchShifter_init        (float* in, float* out, int bufSize, int frameSize);
@@ -126,5 +128,15 @@ void        tPitchShifter_setTimeConstant   (tPitchShifter* const, float tc);
 void        tPitchShifter_setHopSize        (tPitchShifter* const, int hs);
 void        tPitchShifter_setWindowSize     (tPitchShifter* const, int ws);
 float		tPitchShifter_getPeriod			(tPitchShifter* const);
+
+tPeriod* 	tPeriod_init					(float* in, float* out, int bufSize, int frameSize);
+float 		tPeriod_findPeriod				(tPeriod* const, float sample);
+void 		tPeriod_setHopSize				(tPeriod* p, int hs);
+void 		tPeriod_setWindowSize			(tPeriod* p, int ws);
+tPitchShift*	tPitchShift_init			(tPeriod* const, float* out, int bufSize);
+float 		tPitchShift_shift				(tPitchShift* const);
+float 		tPitchShift_shiftToFunc 		(tPitchShift* const, float (*fun)(float));
+float		tPitchShift_shiftToFreq			(tPitchShift* const, float freq);
+void 		tPitchShift_setPitchFactor		(tPitchShift* const, float pf);
 
 #endif  // OOPSFILTER_H_INCLUDED

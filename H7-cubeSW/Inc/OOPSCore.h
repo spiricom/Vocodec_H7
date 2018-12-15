@@ -14,6 +14,7 @@
 #include "OOPSMemConfig.h"
 
 #include "OOPSMath.h"
+
 typedef struct _tCompressor
 {
     float tauAttack, tauRelease;
@@ -480,6 +481,7 @@ typedef struct _tVocoder
 } tVocoder;
 
 #define NUM_TALKBOX_PARAM 4
+#define TALKBOX_BUFFER_LENGTH 1024 //1600
 
 typedef struct _tTalkbox
 {
@@ -626,7 +628,7 @@ typedef struct _tMPoly
     
 } tMPoly;
 
-#define LOOPSIZE (4096*2)           // loop size must be power of two
+#define LOOPSIZE (2048*2)      // (4096*2) // loop size must be power of two
 #define LOOPMASK (LOOPSIZE - 1)
 #define PITCHFACTORDEFAULT 1.0f
 #define INITPERIOD 64.0f
@@ -649,7 +651,7 @@ typedef struct _tSOLAD
     void (*sampleRateChanged)(struct _tSOLAD *self);
 } tSOLAD;
 
-#define DEFFRAMESIZE 1024           // default analysis framesize
+#define SNAC_FRAME_SIZE 1024           // default analysis framesize // should be the same as (or smaller than?) PS_FRAME_SIZE
 #define DEFOVERLAP 1                // default overlap
 #define DEFBIAS 0.2f        // default bias
 #define DEFMINRMS 0.003f   // default minimum RMS
@@ -657,10 +659,10 @@ typedef struct _tSOLAD
 
 typedef struct _tSNAC
 {
-    float *inputbuf;
-    float *processbuf;
-    float *spectrumbuf;
-    float *biasbuf;
+    float inputbuf[SNAC_FRAME_SIZE];
+    float processbuf[SNAC_FRAME_SIZE * 2];
+    float spectrumbuf[SNAC_FRAME_SIZE / 2];
+    float biasbuf[SNAC_FRAME_SIZE];
     
     uint16_t timeindex;
     uint16_t framesize;
@@ -675,7 +677,6 @@ typedef struct _tSNAC
     void (*sampleRateChanged)(struct _tSNAC *self);
 } tSNAC;
 
-#define DEFSAMPLERATE 44100
 #define DEFBLOCKSIZE 1024
 #define DEFTHRESHOLD 6
 #define DEFATTACK    10
@@ -727,7 +728,7 @@ typedef struct _tLockhartWavefolder
 
 typedef struct _tEnv
 {
-    float buf[5000];
+    float buf[ENV_WINDOW_SIZE + INITVSTAKEN];
     uint16_t x_phase;                    /* number of points since last output */
     uint16_t x_period;                   /* requested period of output */
     uint16_t x_realperiod;               /* period rounded up to vecsize multiple */
@@ -739,8 +740,8 @@ typedef struct _tEnv
     uint16_t x_allocforvs;               /* extra buffer for DSP vector size */
 } tEnv;
 
-#define FORD 10
-#define CBSIZE 2048
+#define FORD 7
+#define FORMANT_BUFFER_SIZE 2048
 
 typedef struct _tFormantShifter
 {
@@ -757,15 +758,11 @@ typedef struct _tFormantShifter
     float fhp;
     float flp;
     float flpa;
-    float fbuff[FORD][CBSIZE];
+    float fbuff[FORD][FORMANT_BUFFER_SIZE];
     float ftvec[FORD];
     float fmute;
     float fmutealph;
-    unsigned int cbiwr;
-    float cbi[CBSIZE];
-    float cbf[CBSIZE];
-    float cbo [CBSIZE];
-    unsigned int cbord;
+    unsigned int cbi;
     
     void (*sampleRateChanged)(struct _tFormantShifter *self);
 } tFormantShifter;
@@ -807,6 +804,55 @@ typedef struct _tPitchShifter
     void (*sampleRateChanged)(struct _tPitchShifter *self);
 } tPitchShifter;
 
+typedef struct _tPeriod
+{
+	tEnv* env;
+	tSNAC* snac;
+	float* inBuffer;
+	float* outBuffer;
+	int frameSize;
+	int bufSize;
+	int framesPerBuffer;
+	int curBlock;
+	int lastBlock;
+	int i;
+	int indexstore;
+	int iLast;
+	int index;
+	float period;
+
+	uint16_t hopSize;
+	uint16_t windowSize;
+	uint8_t fba;
+
+	float timeConstant;
+	float radius;
+	float max;
+	float lastmax;
+	float deltamax;
+
+}tPeriod;
+
+typedef struct _tPitchShift
+{
+	tSOLAD* sola;
+	tHighpass* hp;
+	tPeriod* p;
+
+	float* outBuffer;
+	int frameSize;
+	int bufSize;
+
+	int framesPerBuffer;
+	int curBlock;
+	int lastBlock;
+	int index;
+
+	float pitchFactor;
+	float timeConstant;
+	float radius;
+}tPitchShift;
+
 
 // ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ //
 void     tPhasorSampleRateChanged (tPhasor *p);
@@ -841,7 +887,9 @@ void     tSNACSampleRateChanged(tSNAC* n);
 
 void     tLockhartWavefolderSampleRateChanged(tLockhartWavefolder* n);
 void     tFormantShifterSampleRateChanged(tFormantShifter* n);
-void     tPitchShifterSampleRateChanged(tFormantShifter* n);
+void     tPitchShifterSampleRateChanged(tPitchShifter* n);
+void	 tPeriodSampleRateChanged(tPeriod* n);
+void	 tPitchShiftSampleRateChanged(tPitchShift* n);
 
 typedef enum OOPSRegistryIndex
 {
@@ -889,6 +937,8 @@ typedef enum OOPSRegistryIndex
     T_LOCKHARTWAVEFOLDER,
     T_ENV,
     T_PITCHSHIFTER,
+	T_PERIOD,
+	T_PITCHSHIFT,
     T_INDEXCNT
 }OOPSRegistryIndex;
 
@@ -1078,8 +1128,16 @@ typedef struct _OOPS
 #if N_PITCHSHIFTER
     tPitchShifter               tPitchShifterRegistry[N_PITCHSHIFTER];
 #endif
+
+#if N_PERIOD
+    tPeriod              	tPeriodRegistry[N_PERIOD];
+#endif
     
+#if N_PITCHSHIFT
+    tPitchShift               	tPitchShiftRegistry[N_PITCHSHIFT];
+#endif
     
+
     int registryIndex[T_INDEXCNT];
 		
 } OOPS;
