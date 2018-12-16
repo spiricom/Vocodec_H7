@@ -69,7 +69,6 @@ void noteOn(int key, int velocity)
 	}
 	else
 	{
-		SFXNoteOn(key, velocity);
 		noteSounding[key] = 1;
 
 		noteHeld[key] = 1;
@@ -82,7 +81,6 @@ void noteOff(int key, int velocity)
 {
 	if (!sustain)
 	{
-		SFXNoteOff(key, velocity);
 		noteSounding[key] = 0;
 
 		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_RESET);    //LED3
@@ -104,7 +102,6 @@ void sustainOff(void)
 	{
 		if (noteSounding[key] && !noteHeld[key])
 		{
-			SFXNoteOff(key, 64);
 			noteSounding[key] = 0;
 		}
 	}
@@ -117,15 +114,16 @@ void ctrlInput(int ctrl, int value)
 
 void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTypeDef* hsaiIn, RNG_HandleTypeDef* hrand)
 {
-	// Initialize the audio library. OOPS.
-	SFXInit(SAMPLE_RATE, AUDIO_FRAME_SIZE);
+	// Initialize LEAF.
+
+	LEAF_init(SAMPLE_RATE, AUDIO_FRAME_SIZE, &randomNumber);
+
+
 
 	//now to send all the necessary messages to the codec
 	AudioCodec_init(hi2c);
 
 	HAL_Delay(100);
-
-	initFunctionPointers();
 
 	for (int i = 0; i < AUDIO_BUFFER_SIZE; i++)
 	{
@@ -138,26 +136,24 @@ void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTy
 
 int numSamples = AUDIO_FRAME_SIZE;
 
+static float tick(float in)
+{
+
+}
+
 void audioFrame(uint16_t buffer_offset)
 {
-	int sample = 0;
+	int i;
+	int32_t current_sample = 0;
 
-
-	SFXVocoderFrame();
-
-	for (int cc=0; cc < numSamples; cc++)
+	for (i = 0; i < (HALF_BUFFER_SIZE); i++)
 	{
-		for (int i = 0; i < NUM_KNOBS; i++)
+		if ((i & 1) == 0)
 		{
-			knobVals[i] = tRampTick(knobRamps[i]);
+			current_sample = (int32_t)(tick((float) (audioInBuffer[buffer_offset + i] * INV_TWO_TO_31)) * TWO_TO_31);
 		}
-		sample = (int) (audioInBuffer[buffer_offset+(cc*2)] * inputLevel);
 
-		sample = SFXVocoderTick(sample);
-
-		outputLevel = knobVals[0] * .3;
-
-		audioOutBuffer[buffer_offset + (cc*2)] = (int) (sample * outputLevel);
+		audioOutBuffer[buffer_offset + i] = current_sample;
 	}
 }
 

@@ -27,8 +27,6 @@ uint8_t key, velocity, ctrl, data;
 uint8_t paramvalue[256], firstkey, h;
 /* Private define ------------------------------------------------------------*/
 
-
-
 /* Private function prototypes -----------------------------------------------*/
 
 

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
 	<name>H7-cube</name>
-	<comment />
+	<comment></comment>
 	<projects>
 	</projects>
 	<buildSpec>
@@ -25,6 +25,10 @@
 		<nature>fr.ac6.mcu.ide.core.MCUProjectNature</nature>
 	</natures>
 	<linkedResources>
-		
+		<link>
+			<name>LEAF</name>
+			<type>2</type>
+			<location>/Users/airship/leaf/LEAF</location>
+		</link>
 	</linkedResources>
 </projectDescription>

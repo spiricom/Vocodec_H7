@@ -3,18 +3,13 @@
 #include "audiostream.h"
 #include "gfx.h"
 #include "ui.h"
-#include "sfx.h"
+#include "leaf.h"
 
 GFX theGFX;
 uint16_t* adcVals;
-float knobVals[NUM_KNOBS];
 
 uint8_t buttonsHeld[NUM_BUTTONS];
 
-char* modeNames[FullModeCount];
-char* shortModeNames[ModeCount];
-char* chainLockString = " }  }  }  ";
-static void initModeNames();
 
 static void buttonWasPressed(VocodecButton button);
 static void upButtonWasPressed(void);
@@ -22,71 +17,12 @@ static void downButtonWasPressed(void);
 static void aButtonWasPressed(void);
 static void bButtonWasPressed(void);
 static void buttonWasReleased(VocodecButton button);
-static void writeModeToLCD(VocodecMode in, UpDownMode ud);
 
 uint8_t xPos;
 uint8_t yPos;
 uint8_t penWeight;
 uint8_t penColor = 1;
 
-tRamp* knobRamps[NUM_KNOBS];
-float lastval[NUM_KNOBS];
-
-UpDownMode upDownMode = ModeChange;
-VocodecMode displayMode = VocoderMode;
-VocodecMode modeChain[CHAIN_LENGTH];
-uint8_t chainLock[CHAIN_LENGTH];
-uint8_t chainIndex = 0;
-uint8_t modeAvail[ModeCount];
-
-
-void UIInit(uint16_t* myADCArray)
-{
-	float val;
-
-	initModeNames();
-
-	adcVals = myADCArray;
-
-	for (int i = 0; i < CHAIN_LENGTH; i++)
-	{
-		modeChain[i] = ModeNil;
-		chainLock[i] = 0;
-	}
-	modeChain[0] = displayMode;
-
-	for (int i = 0; i < ModeCount; i++)
-	{
-		modeAvail[i] = 1;
-	}
-
-	OLEDwriteString("VOCODER     ", 12, 0, FirstLine);
-	OLEDwriteString("            ", 12, 0, SecondLine);
-
-	sdd1306_invertDisplay(1);
-
-	for(int i = 0; i < NUM_KNOBS; i++)
-	{
-		knobRamps[i] = tRampInit(100.0f, 1);
-
-		val = (int) (adcVals[(NUM_KNOBS-1)-i] * 0.00390625f);
-		lastval[i] = val;
-		val /= 255.0f;
-		if (val < 0.025f) val = 0.025;
-		else if (val > 0.975f) val = 0.975f;
-		val = (val - 0.025f) / 0.95f;
-		tRampSetDest(knobRamps[i], val);
-		tRampSetVal(knobRamps[i], val);
-	}
-}
-
-void UIDrawFrame(void)
-{
-	xPos = (int) (knobVals[2] * 128);
-	yPos = (int) (32 - (knobVals[3] * 32));
-	penWeight = (int) (knobVals[1] * 10);
-	OLEDdrawCircle(xPos, yPos, penWeight, penColor);
-}
 
 #define BUTTON_HYSTERESIS 4
 void buttonCheck(void)
@@ -125,46 +61,11 @@ void buttonCheck(void)
 
 void processKnobs(void)
 {
-	float val;
-	for(int i = 0; i < NUM_KNOBS; ++i)
-	{
-		val = (int) (adcVals[(NUM_KNOBS-1)-i] * 0.00390625f);
-		if (fabsf(lastval[i] - val) >= 2.0f)
-		{
-			lastval[i] = val;
-			val /= 255.0f;
-			if (val < 0.025f) val = 0.025;
-			else if (val > 0.975f) val = 0.975f;
-			val = (val - 0.025f) / 0.95f;
-			tRampSetDest(knobRamps[i], val);
-		}
-	}
+
 }
 
 #define ASCII_NUM_OFFSET 48
-static void writeModeToLCD(VocodecMode in, UpDownMode ud)
-{
-	if (in == DrawMode) return;
-	OLEDwriteLine(modeNames[in], 10, FirstLine);
-	if (in == ChainEditMode)
-	{
 
-		return;
-	}
-	if (knobLock[in] > 0) OLEDwriteString("}", 1, 112, FirstLine);
-	if (in == AutotuneNearestMode)
-	{
-		if (autotuneLock > 0) OLEDwriteLine("LOCK", 4, SecondLine);
-	}
-	else if (in == AutotuneAbsoluteMode || in == VocoderMode || in == SynthMode)
-	{
-		OLEDwriteIntLine(numActiveVoices[in], 2, SecondLine);
-		if (ud == ParameterChange)
-		{
-			OLEDwriteString("<", 1, 28, SecondLine);
-		}
-	}
-}
 
 static void buttonWasPressed(VocodecButton button)
 {
@@ -173,35 +74,6 @@ static void buttonWasPressed(VocodecButton button)
 	else if (button == ButtonDown) downButtonWasPressed();
 	else if (button == ButtonA) aButtonWasPressed();
 	else if (button == ButtonB) bButtonWasPressed();
-
-	if (bypass)
-	{
-		sdd1306_invertDisplay(0);
-		if (transposed)
-		{
-			OLEDwriteString("DRY         ", 12, 0, FirstLine);
-			OLEDwriteString("+2 +2 +2", 8, 0, SecondLine);
-		}
-		else
-		{
-			OLEDwriteString("DRY         ", 12, 0, FirstLine);
-			OLEDwriteString("        ", 8, 0, SecondLine);
-		}
-	}
-	else
-	{
-		sdd1306_invertDisplay(1);
-		if (transposed)
-		{
-			OLEDwriteString("VOCODER     ", 12, 0, FirstLine);
-			OLEDwriteString("+2 +2 +2", 8, 0, SecondLine);
-		}
-		else
-		{
-			OLEDwriteString("VOCODER     ", 12, 0, FirstLine);
-			OLEDwriteString("        ", 8, 0, SecondLine);
-		}
-	}
 }
 
 static void upButtonWasPressed()
@@ -216,31 +88,12 @@ static void downButtonWasPressed()
 
 static void aButtonWasPressed()
 {
-	if (buttonsHeld[ButtonB])
-	{
-		clearNotes();
 
-		toggleBypass();
-	}
-	else
-	{
-		toggleTranspose();
-		//toggleSustain();
-	}
 }
 
 static void bButtonWasPressed()
 {
-	if (buttonsHeld[ButtonA])
-	{
-		clearNotes();
-		toggleTranspose();
-		//toggleSustain();
-	}
-	else
-	{
-		toggleBypass();
-	}
+
 }
 
 static void buttonWasReleased(VocodecButton button)
@@ -357,47 +210,4 @@ void OLEDwriteFixedFloatLine(float input, uint8_t numDigits, uint8_t numDecimal,
 	int len = OLEDparseFixedFloat(oled_buffer, input, numDigits, numDecimal);
 
 	OLEDwriteLine(oled_buffer, len, line);
-}
-
-void toggleTranspose()
-{
-	if (transposed == 0)
-	{
-		transposeFactor = 1.122462f;
-		transposed = 1;
-	}
-	else
-	{
-		transposeFactor = 1.0f;
-		transposed = 0;
-	}
-}
-static void initModeNames()
-{
-	modeNames[VocoderMode] = "VOCODER   ";
-	shortModeNames[VocoderMode] = "VC";
-	modeNames[FormantShiftMode] = "FORMANT   ";
-	shortModeNames[FormantShiftMode] = "FS";
-	modeNames[PitchShiftMode] = "PITCHSHIFT";
-	shortModeNames[PitchShiftMode] = "PS";
-	modeNames[AutotuneNearestMode] = "AUTOTUNE1 ";
-	shortModeNames[AutotuneNearestMode] = "A1";
-	modeNames[AutotuneAbsoluteMode] = "AUTOTUNE2 ";
-	shortModeNames[AutotuneAbsoluteMode] = "A2";
-	modeNames[DelayMode] = "DELAY     ";
-	shortModeNames[DelayMode] = "DL";
-	modeNames[ReverbMode] = "REVERB    ";
-	shortModeNames[ReverbMode] = "RV";
-	modeNames[BitcrusherMode] = "BITCRUSHER ";
-	shortModeNames[BitcrusherMode] = "BC";
-	modeNames[DrumboxMode] = "DRUMBOX   ";
-	shortModeNames[DrumboxMode] = "DB";
-	modeNames[SynthMode] = "SYNTH     ";
-	shortModeNames[SynthMode] = "SY";
-	modeNames[DrawMode] = "          ";
-	shortModeNames[DrawMode] = "DW";
-	modeNames[LevelMode] = "LEVEL     ";
-	shortModeNames[LevelMode] = "LV";
-
-	modeNames[ChainEditMode] = ">VC -- -- ";
 }

@@ -68,7 +68,7 @@
 #include "custom_fonts.h"
 #include "gfx.h"
 #include "ui.h"
-#include "sfx.h"
+#include "leaf.h"
 
 
 // FOR BEST SPEED
@@ -244,7 +244,6 @@ int main(void)
 
 	}
 	audioInit(&hi2c2, &hsai_BlockA1, &hsai_BlockB1, &hrng);
-	UIInit(((uint16_t*)&myADC));
 	
 
   /* USER CODE END 2 */
@@ -258,29 +257,7 @@ int main(void)
 
 	  if (counter >= 400)
 	  {
-		  processKnobs();
 
-		  /*
-		  for (int i = 0; i < 12; i++)
-		  {
-			  info[i] = ' ';
-		  }
-
-		  if (bypass)
-		  {
-			  info[0] = 'B';
-		  }
-
-		  if (sustainInverted)
-		  {
-			  info[2] = 'S';
-			  info[3] = 'I';
-		  }
-
-		  OLEDwriteString(info, 10, 0, SecondLine);
-		  */
-
-		  buttonCheck(); // should happen here, not frame, or else interrupts audio processing
 		  counter = 0;
 	  }
 	  counter++;
