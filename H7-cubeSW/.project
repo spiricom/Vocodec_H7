@@ -24,11 +24,4 @@
 		<nature>org.eclipse.cdt.managedbuilder.core.ScannerConfigNature</nature>
 		<nature>fr.ac6.mcu.ide.core.MCUProjectNature</nature>
 	</natures>
-	<linkedResources>
-		<link>
-			<name>LEAF</name>
-			<type>2</type>
-			<location>/Users/airship/Vocodec_H7/leaf/LEAF</location>
-		</link>
-	</linkedResources>
 </projectDescription>
