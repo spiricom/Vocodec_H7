@@ -112,13 +112,15 @@ void ctrlInput(int ctrl, int value)
 
 }
 
+tSawtooth osc;
+
 void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTypeDef* hsaiIn, RNG_HandleTypeDef* hrand)
 {
 	// Initialize LEAF.
-
 	LEAF_init(SAMPLE_RATE, AUDIO_FRAME_SIZE, &randomNumber);
 
-
+	tSawtooth_init(&osc);
+	tSawtooth_setFreq(&osc, 220.0f);
 
 	//now to send all the necessary messages to the codec
 	AudioCodec_init(hi2c);
@@ -136,10 +138,13 @@ void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTy
 
 int numSamples = AUDIO_FRAME_SIZE;
 
+
+
 static float tick(float in)
 {
-
+	return 0.5f * tSawtooth_tick(&osc);
 }
+
 
 void audioFrame(uint16_t buffer_offset)
 {
