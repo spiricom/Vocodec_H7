@@ -112,15 +112,22 @@ void ctrlInput(int ctrl, int value)
 
 }
 
-tSawtooth osc;
+tDattorro reverb;
+
+tSawtooth saw;
+tEnvelope env;
 
 void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTypeDef* hsaiIn, RNG_HandleTypeDef* hrand)
 {
 	// Initialize LEAF.
 	LEAF_init(SAMPLE_RATE, AUDIO_FRAME_SIZE, &randomNumber);
 
-	tSawtooth_init(&osc);
-	tSawtooth_setFreq(&osc, 220.0f);
+	tDattorro_init(&reverb);
+
+	tSawtooth_init(&saw);
+	tSawtooth_setFreq(&saw, 110.0f);
+
+	tEnvelope_init(&env, 3.0f, 500.0f, OFALSE);
 
 	//now to send all the necessary messages to the codec
 	AudioCodec_init(hi2c);
@@ -134,15 +141,35 @@ void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTy
 	// set up the I2S driver to send audio data to the codec (and retrieve input as well)
 	transmit_status = HAL_SAI_Transmit_DMA(hsaiOut, (uint8_t *)&audioOutBuffer[0], AUDIO_BUFFER_SIZE);
 	receive_status = HAL_SAI_Receive_DMA(hsaiIn, (uint8_t *)&audioInBuffer[0], AUDIO_BUFFER_SIZE);
+
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
 }
 
 int numSamples = AUDIO_FRAME_SIZE;
 
+int timer = 0;
 
+
+
+#define CLICK 0
+
+float sample;
 
 static float tick(float in)
 {
-	return 0.5f * tSawtooth_tick(&osc);
+	sample = in;
+
+#if CLICK
+	if (++timer >= leaf.sampleRate)
+	{
+		timer = 0;
+		//sample = 1.0f;
+		tEnvelope_on(&env, 0.5f);
+	}
+	sample = tEnvelope_tick(&env) * tSawtooth_tick(&saw);
+#endif
+
+	return tDattorro_tick(&reverb, sample);
 }
 
 
@@ -161,12 +188,6 @@ void audioFrame(uint16_t buffer_offset)
 		audioOutBuffer[buffer_offset + i] = current_sample;
 	}
 }
-
-static void initFunctionPointers(void)
-{
-
-}
-
 
 void HAL_SAI_ErrorCallback(SAI_HandleTypeDef *hsai)
 {
