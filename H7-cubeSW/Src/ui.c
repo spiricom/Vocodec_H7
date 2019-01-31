@@ -8,6 +8,11 @@
 GFX theGFX;
 uint16_t* adcVals;
 
+
+tRamp knobRamps[NUM_KNOBS];
+float knobVals[NUM_KNOBS];
+float lastval[NUM_KNOBS];
+
 uint8_t buttonsHeld[NUM_BUTTONS];
 
 
@@ -23,6 +28,49 @@ uint8_t yPos;
 uint8_t penWeight;
 uint8_t penColor = 1;
 
+void UIInit(uint16_t* myADCArray)
+{
+	float val;
+
+	adcVals = myADCArray;
+
+	for(int i = 0; i < NUM_KNOBS; i++)
+	{
+		tRamp_init(&knobRamps[i], 20.0f, 1);
+
+		val = (int) (adcVals[(NUM_KNOBS-1)-i] * 0.00390625f);
+
+		lastval[i] = val;
+
+		val /= 255.0f;
+
+		if (val < 0.025f) val = 0.025;
+		else if (val > 0.975f) val = 0.975f;
+
+		val = (val - 0.025f) / 0.95f;
+
+		tRamp_setDest(&knobRamps[i], val);
+		tRamp_setVal(&knobRamps[i], val);
+	}
+}
+
+void processKnobs(void)
+{
+	float val;
+	for(int i = 0; i < NUM_KNOBS; ++i)
+	{
+		val = (int) (adcVals[(NUM_KNOBS-1)-i] * 0.00390625f);
+		if (fabsf(lastval[i] - val) >= 2.0f)
+		{
+			lastval[i] = val;
+			val /= 255.0f;
+			if (val < 0.025f) val = 0.025;
+			else if (val > 0.975f) val = 0.975f;
+			val = (val - 0.025f) / 0.95f;
+			tRamp_setDest(&knobRamps[i], val);
+		}
+	}
+}
 
 #define BUTTON_HYSTERESIS 4
 void buttonCheck(void)
@@ -59,11 +107,6 @@ void buttonCheck(void)
 	}
 }
 
-void processKnobs(void)
-{
-
-}
-
 #define ASCII_NUM_OFFSET 48
 
 
@@ -88,12 +131,12 @@ static void downButtonWasPressed()
 
 static void aButtonWasPressed()
 {
-
+	tSample_start(&sample1);
 }
 
 static void bButtonWasPressed()
 {
-
+	tSample_start(&sample2);
 }
 
 static void buttonWasReleased(VocodecButton button)

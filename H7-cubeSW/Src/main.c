@@ -244,6 +244,7 @@ int main(void)
 
 	}
 	audioInit(&hi2c2, &hsai_BlockA1, &hsai_BlockB1, &hrng);
+	UIInit(((uint16_t*)&myADC));
 	
 
   /* USER CODE END 2 */

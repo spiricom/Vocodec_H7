@@ -112,22 +112,43 @@ void ctrlInput(int ctrl, int value)
 
 }
 
-tDattorro reverb;
 
-tSawtooth saw;
-tEnvelope env;
+typedef enum Knob
+{
+	KnobOne = 0,
+	KnobTwo,
+	KnobThree,
+	KnobFour,
+	KnobNil
+};
+
+tSample sample1;
+tSample sample2;
+
+tSamplePlayer player1;
+tSamplePlayer player2;
+
+
 
 void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTypeDef* hsaiIn, RNG_HandleTypeDef* hrand)
 {
 	// Initialize LEAF.
 	LEAF_init(SAMPLE_RATE, AUDIO_FRAME_SIZE, &randomNumber);
 
-	tDattorro_init(&reverb);
+	tSample_init(&sample1, leaf.sampleRate * 1.f);
+	tSample_init(&sample2, leaf.sampleRate * 1.f);
 
-	tSawtooth_init(&saw);
-	tSawtooth_setFreq(&saw, 110.0f);
+	tSamplePlayer_init(&player1, &sample1);
+	tSamplePlayer_init(&player2, &sample2);
 
-	tEnvelope_init(&env, 3.0f, 500.0f, OFALSE);
+	tSamplePlayer_setMode(&player1, Loop);
+	tSamplePlayer_setMode(&player2, Loop);
+
+	for (int i = 0; i < NUM_KNOBS; i++)
+	{
+		tRamp_init(&knobRamps[i], 50.0f, 1);
+	}
+	tRamp_setTime(&knobRamps[KnobFour], 2000.0f);
 
 	//now to send all the necessary messages to the codec
 	AudioCodec_init(hi2c);
@@ -143,33 +164,44 @@ void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTy
 	receive_status = HAL_SAI_Receive_DMA(hsaiIn, (uint8_t *)&audioInBuffer[0], AUDIO_BUFFER_SIZE);
 
 	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
+
+	tSample_start(&sample1);
+	tSample_start(&sample2);
+
+	tSamplePlayer_play(&player1);
+	tSamplePlayer_play(&player2);
 }
 
 int numSamples = AUDIO_FRAME_SIZE;
 
 int timer = 0;
 
-
-
 #define CLICK 0
 
-float sample;
+float samp;
 
 static float tick(float in)
 {
-	sample = in;
-
-#if CLICK
-	if (++timer >= leaf.sampleRate)
+	// tick knob ramps˙
+	for (int i = 0; i < NUM_KNOBS; i++)
 	{
-		timer = 0;
-		//sample = 1.0f;
-		tEnvelope_on(&env, 0.5f);
+		knobVals[i] = tRamp_tick(&knobRamps[i]);
 	}
-	sample = tEnvelope_tick(&env) * tSawtooth_tick(&saw);
-#endif
 
-	return tDattorro_tick(&reverb, sample);
+	tSamplePlayer_setStart(&player1, leaf.sampleRate * 0.8f * knobVals[KnobOne]);
+	tSamplePlayer_setEnd(&player1, leaf.sampleRate * 0.2f + leaf.sampleRate * 0.8f * knobVals[KnobOne]);
+
+	tSamplePlayer_setStart(&player2, leaf.sampleRate * 0.8f * knobVals[KnobTwo]);
+	tSamplePlayer_setEnd(&player2, leaf.sampleRate * 0.2f + leaf.sampleRate * 0.8f * knobVals[KnobTwo]);
+
+	tSamplePlayer_setRate(&player1, -2.f + 4.f * knobVals[KnobThree]);
+	tSamplePlayer_setRate(&player2, -2.f + 4.f * knobVals[KnobFour]);
+
+	tSample_tick(&sample1, in);
+	tSample_tick(&sample2, in);
+
+	return (0.5f * tSamplePlayer_tick(&player1) + 0.5f * tSamplePlayer_tick(&player2));
+
 }
 
 
@@ -177,6 +209,10 @@ void audioFrame(uint16_t buffer_offset)
 {
 	int i;
 	int32_t current_sample = 0;
+
+	processKnobs();
+	buttonCheck();
+
 
 	for (i = 0; i < (HALF_BUFFER_SIZE); i++)
 	{
