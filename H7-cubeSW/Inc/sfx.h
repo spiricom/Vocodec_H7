@@ -20,25 +20,8 @@ extern int lockArray[12];
 extern int chordArray[12];
 extern float noteperiod;
 
-/* Enums -------------------------------------------------------------------*/
-
-typedef enum {
-	MAJOR = 0,
-	MINOR
-}Scale;
-
-typedef enum {
-	C = 0,
-	CsDf,
-	D,
-	DsEf,
-	E,
-	F,
-	FsGf,
-	GsAf,
-	AsBf,
-	B
-}Key;
+extern int sungNote;
+extern int playedNote;
 
 /* Params -------------------------------------------------------------------*/
 
@@ -60,8 +43,10 @@ extern float formantShiftFactorPS;
 extern float glideTimeAuto;
 
 // Harmonizer
-extern int sungNote;
-extern int playedNote;
+extern int harmonizerKey;
+extern int harmonizerScale;
+extern int harmonizerComplexity;
+extern int harmonizerHeat;
 
 // Delay
 extern float hpFreqDel;

@@ -69,6 +69,10 @@ float glideTimeAuto = 5.0f;
 // Harmonizer
 int sungNote = -1;
 int playedNote = -1;
+int harmonizerKey = 0;
+int harmonizerScale = 0;
+int harmonizerComplexity = 0;
+int harmonizerHeat = 0;
 
 // Delay
 float hpFreqDel = 20.0f;
@@ -234,8 +238,8 @@ void SFXInit(float sr, int blocksize)
 	knobValsPerMode[ReverbMode][2] = t60 * 0.1f;
 	knobValsPerMode[ReverbMode][3] = revMix;
 
-	knobValsPerMode[HarmonizeMode][0] = C; // key
-	knobValsPerMode[HarmonizeMode][1] = MAJOR; // scale
+	knobValsPerMode[HarmonizeMode][0] = 0; // key
+	knobValsPerMode[HarmonizeMode][1] = 0; // scale
 	knobValsPerMode[HarmonizeMode][2] = 1; // complexity
 	knobValsPerMode[HarmonizeMode][3] = 0; // heat
 
@@ -429,7 +433,15 @@ int32_t SFXAutotuneAbsoluteTick(int32_t input)
 
 void SFXHarmonizeFrame()
 {
-
+	int oldKey = harmonizerKey;
+	int oldScale = harmonizerScale;
+	__KNOBCHECK1__ { harmonizerKey = (int) floor(knobVals[0] * 9.999f); }
+	__KNOBCHECK2__ { harmonizerScale = (int) floor(knobVals[0] * 1.999f); }
+	__KNOBCHECK3__ {}
+	__KNOBCHECK4__ {}
+	if (oldKey != harmonizerKey || oldScale != harmonizerScale) {
+		harmonizerInit();
+	}
 }
 int32_t SFXHarmonizeTick(int32_t input)
 {
@@ -738,6 +750,10 @@ void SFXNoteOff(int key, int velocity)
 
 /**************** Helper Functions *********************/
 
+void harmonizerInit() {
+
+}
+
 int harmonize() {
 	int noteArray[3];
 
@@ -749,6 +765,7 @@ int harmonize() {
 
 	return noteArray[0];
 }
+
 
 void calculateFreq(int voice)
 {

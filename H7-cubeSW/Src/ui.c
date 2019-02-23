@@ -64,6 +64,28 @@ char* formantEmojis[9] =
 	"        :D"
 };
 
+char* harmonizerKeys[10] =
+{
+	"   C",
+	"C#Db",
+	"   D",
+	"D#Eb",
+	"   E",
+	"   F",
+	"F#Gb",
+	"G#Ab",
+	"A#Bb",
+	"   B"
+};
+
+char* harmonizerScales[2] =
+{
+	"M",
+	"m"
+};
+
+char harmonizerParams[5];
+
 void UIInit(uint16_t* myADCArray)
 {
 	float val;
@@ -260,8 +282,18 @@ void displayScreen(void)
 			if(strcmp(knobNamesPerMode[HarmonizeMode][lastKnob], "NONE")==0) OLEDwriteLine(knobNamesPerMode[HarmonizeMode][lastKnob], 4, SecondLine);
 			else OLEDwriteString(knobNamesPerMode[HarmonizeMode][lastKnob], 4, 4, SecondLine, 0);
 
-			OLEDwriteInt(sungNote, 2, 48, SecondLine);
-			OLEDwriteInt(playedNote, 2, 96, SecondLine);
+			//display knob values if they correspond to a parameter
+			if(lastKnob == 0 || lastKnob == 1)
+			{
+				strcpy(harmonizerParams, harmonizerKeys[harmonizerKey]);
+				strcat(harmonizerParams, harmonizerScales[harmonizerScale]);
+				OLEDwriteString(harmonizerKeys[harmonizerKey], 5, 64, SecondLine, 0);
+			}
+			else
+			{
+				OLEDwriteInt(sungNote, 2, 48, SecondLine);
+				OLEDwriteInt(playedNote, 2, 96, SecondLine);
+			}
 		}
 		else if (modeChain[chainIndex] == DelayMode)
 		{
@@ -533,7 +565,7 @@ static void initKnobs(void)
 	knobNamesPerMode[AutotuneNearestMode][2] = "NONE";
 	knobNamesPerMode[AutotuneNearestMode][3] = "NONE";
 
-	knobNamesPerMode[HarmonizeMode][0] = "DEG";
+	knobNamesPerMode[HarmonizeMode][0] = "KEY";
 	knobNamesPerMode[HarmonizeMode][1] = "SCL";
 	knobNamesPerMode[HarmonizeMode][2] = "CPLX";
 	knobNamesPerMode[HarmonizeMode][3] = "HEAT";
