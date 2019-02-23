@@ -34,6 +34,9 @@ tSVF* highpassRev;
 tDelayL* delay;
 tPRCRev* rev;
 
+// sawtooth for harmonizer
+tSawtooth* saw;
+
 #define FEEDBACK_LOOKUP_SIZE 5
 #define DELAY_LOOKUP_SIZE 4
 float FeedbackLookup[FEEDBACK_LOOKUP_SIZE] = { 0.0f, 0.8f, .999f, 1.0f, 1.03f };
@@ -62,6 +65,10 @@ float formantShiftFactorPS = 0.0f;
 
 // Autotune2
 float glideTimeAuto = 5.0f;
+
+// Harmonizer
+int sungNote = -1;
+int playedNote = -1;
 
 // Delay
 float hpFreqDel = 20.0f;
@@ -204,6 +211,8 @@ void SFXInit(float sr, int blocksize)
 
 	rev = tPRCRevInit(1.0f);
 
+	// initialize sawtooth for harmonizer
+	saw = tSawtoothInit();
 
 	//set up knobValsPerMode with the correct values so that the proper hysteresis occurs
 	knobValsPerMode[VocoderMode][0] = (glideTimeVoc - 5.0f) / 999.0f;
@@ -224,6 +233,11 @@ void SFXInit(float sr, int blocksize)
 	knobValsPerMode[ReverbMode][1] = (lpFreqRev - 100.0f) / 19900.0f;
 	knobValsPerMode[ReverbMode][2] = t60 * 0.1f;
 	knobValsPerMode[ReverbMode][3] = revMix;
+
+	knobValsPerMode[HarmonizeMode][0] = C; // key
+	knobValsPerMode[HarmonizeMode][1] = MAJOR; // scale
+	knobValsPerMode[HarmonizeMode][2] = 1; // complexity
+	knobValsPerMode[HarmonizeMode][3] = 0; // heat
 
 	knobValsPerMode[BitcrusherMode][2] = rateRatio / 128.0f;
 	knobValsPerMode[BitcrusherMode][3] = bitDepth / 16.0f;
@@ -407,6 +421,35 @@ int32_t SFXAutotuneAbsoluteTick(int32_t input)
 	}
 
 	if (formantCorrect[AutotuneAbsoluteMode] > 0) output = tFormantShifterAdd(fs, output, 0.0f) * 0.5f;
+
+	return (int32_t) (output * TWO_TO_31);
+}
+
+//int frameCount = 0;
+
+void SFXHarmonizeFrame()
+{
+
+}
+int32_t SFXHarmonizeTick(int32_t input)
+{
+	float sample = 0.0f;
+	float output = 0.0f;
+
+	int oldSungNote = sungNote;
+
+	float freq;
+
+	sample = (float) (input * INV_TWO_TO_31);
+
+	freq = oops.sampleRate / tPeriod_findPeriod(p, sample);
+
+	oldSungNote = sungNote;
+	sungNote = round(OOPS_frequencyToMidi(freq));
+
+	if (oldSungNote != sungNote) {
+		harmonize();
+	}
 
 	return (int32_t) (output * TWO_TO_31);
 }
@@ -660,6 +703,8 @@ void SFXNoteOn(int key, int velocity)
 	chordArray[key%12]++;
 	tMPoly_noteOn(mpoly, key, velocity);
 
+	playedNote = key;
+
 	for (int i = 0; i < mpoly->numVoices; i++)
 	{
 		if (tMPoly_isOn(mpoly, i) == 1)
@@ -675,6 +720,11 @@ void SFXNoteOff(int key, int velocity)
 	if (chordArray[key%12] > 0) chordArray[key%12]--;
 
 	int voice = tMPoly_noteOff(mpoly, key);
+
+	if (key == playedNote) {
+		playedNote = -1;
+	}
+
 	if (voice >= 0) tRampSetDest(ramp[voice], 0.0f);
 	for (int i = 0; i < tMPoly_getNumVoices(mpoly); i++)
 	{
@@ -687,6 +737,18 @@ void SFXNoteOff(int key, int velocity)
 }
 
 /**************** Helper Functions *********************/
+
+int harmonize() {
+	int noteArray[3];
+
+	if (sungNote == -1 || playedNote == -1) {
+		return (int) NULL;
+	}
+
+	// harmonization and voicing logic here
+
+	return noteArray[0];
+}
 
 void calculateFreq(int voice)
 {

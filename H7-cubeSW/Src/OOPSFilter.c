@@ -1306,7 +1306,6 @@ tPeriod* 	tPeriod_init	(float* in, float* out, int bufSize, int frameSize)
 
 float tPeriod_findPeriod (tPeriod* p, float sample)
 {
-    float period;
     int i, iLast;
 
     i = (p->curBlock*p->frameSize);
@@ -1334,7 +1333,7 @@ float tPeriod_findPeriod (tPeriod* p, float sample)
 		if (p->lastBlock >= p->framesPerBuffer) p->lastBlock = 0;
     }
 
-    return period;
+    return p->period;
 }
 
 void tPeriod_setHopSize(tPeriod* p, int hs)

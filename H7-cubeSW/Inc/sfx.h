@@ -20,7 +20,28 @@ extern int lockArray[12];
 extern int chordArray[12];
 extern float noteperiod;
 
-/* PARAMS */
+/* Enums -------------------------------------------------------------------*/
+
+typedef enum {
+	MAJOR = 0,
+	MINOR
+}Scale;
+
+typedef enum {
+	C = 0,
+	CsDf,
+	D,
+	DsEf,
+	E,
+	F,
+	FsGf,
+	GsAf,
+	AsBf,
+	B
+}Key;
+
+/* Params -------------------------------------------------------------------*/
+
 // Vocoder
 extern float glideTimeVoc;
 extern float lpFreqVoc;
@@ -37,6 +58,10 @@ extern float formantShiftFactorPS;
 
 // Autotune2
 extern float glideTimeAuto;
+
+// Harmonizer
+extern int sungNote;
+extern int playedNote;
 
 // Delay
 extern float hpFreqDel;
@@ -93,6 +118,9 @@ int32_t SFXAutotuneNearestTick(int32_t input);
 
 void SFXAutotuneAbsoluteFrame();
 int32_t SFXAutotuneAbsoluteTick(int32_t input);
+
+void SFXHarmonizeFrame();
+int32_t SFXHarmonizeTick(int32_t input);
 
 void SFXDelayFrame();
 int32_t SFXDelayTick(int32_t input);

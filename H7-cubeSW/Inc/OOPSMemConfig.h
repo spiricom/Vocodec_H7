@@ -50,7 +50,7 @@ extern const float shaper1[SHAPER1_TABLE_SIZE];
 #define     N_NEURON             0
 #define     N_PHASOR             0
 #define     N_CYCLE              1
-#define     N_SAWTOOTH           NUM_VOICES * NUM_OSC
+#define     N_SAWTOOTH           NUM_VOICES * NUM_OSC + 1
 #define     N_TRIANGLE           0
 #define     N_SQUARE             0
 #define     N_NOISE              1 + (1 * N_STIFKARP) + (1 * N_PLUCK) // StifKarp and Pluck each contain 1 Noise component.

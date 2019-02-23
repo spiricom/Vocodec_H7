@@ -51,6 +51,19 @@ uint8_t indexChained[CHAIN_LENGTH];
 uint8_t modeAvail[CHAIN_LENGTH][ModeCount];
 VocodecButton lastButtonPressed = ButtonNil;
 
+char* formantEmojis[9] =
+{
+	":O        ",
+	" :0       ",
+	"  :o      ",
+	"   :o     ",
+	"    :*    ",
+	"     :|   ",
+	"      :|  ",
+	"       :) ",
+	"        :D"
+};
+
 void UIInit(uint16_t* myADCArray)
 {
 	float val;
@@ -64,7 +77,7 @@ void UIInit(uint16_t* myADCArray)
 		modeChain[i] = ModeNil;
 		indexChained[i] = 1;
 	}
-	modeChain[0] = VocoderMode;
+	modeChain[0] = HarmonizeMode;
 	setAvailableModes();
 
 	writeScreen();
@@ -180,6 +193,312 @@ void knobCheck(void)
 	}
 }
 
+void displayScreen(void)
+{
+	if (screen == HomeScreen)
+	{
+		if (modeChain[chainIndex] == VocoderMode)
+		{
+			//display name of knob parameter or NONE
+			if(strcmp(knobNamesPerMode[VocoderMode][lastKnob], "NONE")==0) OLEDwriteLine(knobNamesPerMode[VocoderMode][lastKnob], 4, SecondLine);
+			else OLEDwriteString(knobNamesPerMode[VocoderMode][lastKnob], 4, 4, SecondLine, 0);
+
+			//display knob values if they correspond to a parameter
+			if(lastKnob == 0) OLEDwriteFixedFloat(glideTimeVoc*0.001f, 4, 3, 64, SecondLine);
+			else if(lastKnob == 2) OLEDwriteKRangeFixedFloat(lpFreqVoc, 4, 1, 64, SecondLine);
+			else if(lastKnob == 3) OLEDwriteFixedFloat(detuneMaxVoc, 4, 2, 64, SecondLine);
+		}
+		else if (modeChain[chainIndex] == FormantShiftMode)
+		{
+			//display NONE for non-formant knobs
+			if(strcmp(knobNamesPerMode[FormantShiftMode][lastKnob], "NONE")==0) OLEDwriteLine(knobNamesPerMode[FormantShiftMode][lastKnob], 4, SecondLine);
+			else
+			{
+				GFXfillRect(&theGFX, 0, 16, 128, 16, 0);
+				int emojiIndex = (int)(formantKnob * 8);
+				int pixel = (int)(formantKnob * 8 * 12);
+				if (pixel > 104) pixel = 104;
+				OLEDwriteString(formantEmojis[emojiIndex], 10, pixel%12, SecondLine, 0);
+			}
+		}
+		else if (modeChain[chainIndex] == PitchShiftMode)
+		{
+			//display name of knob parameter or NONE
+			if(strcmp(knobNamesPerMode[PitchShiftMode][lastKnob], "NONE")==0) OLEDwriteLine(knobNamesPerMode[PitchShiftMode][lastKnob], 4, SecondLine);
+			else OLEDwriteString(knobNamesPerMode[PitchShiftMode][lastKnob], 4, 4, SecondLine, 0);
+
+			//display knob values if they correspond to a parameter
+			if(lastKnob == 2) OLEDwriteFixedFloat(pitchFactor, 4, 2, 64, SecondLine);
+			else if(lastKnob == 0)
+			{
+				//handle negative/positive values
+				if(formantShiftFactorPS >= 0.0f) OLEDwriteFixedFloat(formantShiftFactorPS, 4, 2, 64, SecondLine);
+				else if(formantShiftFactorPS < 0.0f)
+				{
+					OLEDwriteString("-", 1, 64, SecondLine, 0);
+					OLEDwriteFixedFloat((formantShiftFactorPS*(-1.0f)), 3, 2, 76, SecondLine);
+				}
+			}
+		}
+		else if (modeChain[chainIndex] == AutotuneAbsoluteMode)
+		{
+			//display name of knob parameter or NONE
+			if(strcmp(knobNamesPerMode[AutotuneAbsoluteMode][lastKnob], "NONE")==0) OLEDwriteLine(knobNamesPerMode[AutotuneAbsoluteMode][lastKnob], 4, SecondLine);
+			else OLEDwriteString(knobNamesPerMode[AutotuneAbsoluteMode][lastKnob], 4, 4, SecondLine, 0);
+
+			//display knob values if they correspond to a parameter
+			if(lastKnob == 0) OLEDwriteFixedFloat(glideTimeAuto*0.001f, 4, 3, 64, SecondLine); //displayed in seconds
+		}
+		else if (modeChain[chainIndex] == AutotuneNearestMode)
+		{
+			//display name of knob parameter or NONE
+			if(autotuneLock == 0) OLEDclearLine(SecondLine);
+		}
+		else if (modeChain[chainIndex] == HarmonizeMode)
+		{
+			//display name of knob parameter or NONE
+			if(strcmp(knobNamesPerMode[HarmonizeMode][lastKnob], "NONE")==0) OLEDwriteLine(knobNamesPerMode[HarmonizeMode][lastKnob], 4, SecondLine);
+			else OLEDwriteString(knobNamesPerMode[HarmonizeMode][lastKnob], 4, 4, SecondLine, 0);
+
+			OLEDwriteInt(sungNote, 2, 48, SecondLine);
+			OLEDwriteInt(playedNote, 2, 96, SecondLine);
+		}
+		else if (modeChain[chainIndex] == DelayMode)
+		{
+			//display name of knob parameter or NONE
+			if(strcmp(knobNamesPerMode[DelayMode][lastKnob], "NONE")==0) OLEDwriteLine(knobNamesPerMode[DelayMode][lastKnob], 4, SecondLine);
+			else OLEDwriteString(knobNamesPerMode[DelayMode][lastKnob], 4, 4, SecondLine, 0);
+
+			//display knob values if they correspond to a parameter
+			if(lastKnob == 0) OLEDwriteKRangeFixedFloat(hpFreqDel, 4, 1, 64, SecondLine);
+			else if(lastKnob == 1) OLEDwriteKRangeFixedFloat(lpFreqDel, 4, 1, 64, SecondLine);
+			else if(lastKnob == 2) OLEDwriteFixedFloat(newDelay*oops.invSampleRate, 4, 3, 64, SecondLine);
+			else if(lastKnob == 3) OLEDwriteFixedFloat(newFeedback, 4, 2, 64, SecondLine);
+			/*
+			OLEDwriteFixedFloat(newDelay*oops.invSampleRate, 4, 3, 4, SecondLine);
+			OLEDwriteFixedFloat(newFeedback, 3, 2, 76, SecondLine);
+			*/
+		}
+		else if (modeChain[chainIndex] == ReverbMode)
+		{
+			//display name of knob parameter or NONE
+			if(strcmp(knobNamesPerMode[ReverbMode][lastKnob], "NONE")==0) OLEDwriteLine(knobNamesPerMode[ReverbMode][lastKnob], 4, SecondLine);
+			else OLEDwriteString(knobNamesPerMode[ReverbMode][lastKnob], 4, 4, SecondLine, 0);
+
+			//display knob values if they correspond to a parameter
+			if(lastKnob == 0) OLEDwriteKRangeFixedFloat(hpFreqRev, 4, 1, 64, SecondLine);
+			else if(lastKnob == 1) OLEDwriteKRangeFixedFloat(lpFreqRev, 4, 1, 64, SecondLine);
+			else if(lastKnob == 2) OLEDwriteFixedFloat(t60, 4, 2, 64, SecondLine);
+			else if(lastKnob == 3) OLEDwriteFixedFloat(revMix, 4, 3, 64, SecondLine);
+		}
+		else if (modeChain[chainIndex] == DrumboxMode)
+		{
+			//display name of knob parameter or NONE
+			if(strcmp(knobNamesPerMode[DrumboxMode][lastKnob], "NONE")==0) OLEDwriteLine(knobNamesPerMode[DrumboxMode][lastKnob], 4, SecondLine);
+			else OLEDwriteString(knobNamesPerMode[DrumboxMode][lastKnob], 4, 4, SecondLine, 0);
+
+			//display knob values if they correspond to a parameter
+			if(lastKnob == 0) OLEDwriteFixedFloat(decayCoeff*0.001, 3, 2, 64, SecondLine); //displayed in seconds
+			//best solution so far, maybe put everything in smaller range?
+			else if(lastKnob == 1) OLEDwriteKRangeFixedFloat(newFreqDB, 4, 1, 64, SecondLine);
+			else if(lastKnob == 2) OLEDwriteFixedFloat(newDelayDB*oops.invSampleRate, 4, 3, 64, SecondLine);
+			else if(lastKnob == 3) OLEDwriteFixedFloat(newFeedbackDB, 4, 3, 64, SecondLine);
+			/*
+			OLEDwriteFixedFloat(newDelayDB*oops.invSampleRate, 4, 3, 4, SecondLine);
+			OLEDwriteFixedFloat(newFeedbackDB, 3, 2, 76, SecondLine);
+			*/
+		}
+		else if (modeChain[chainIndex] == BitcrusherMode)
+		{
+			//display name of knob parameter or NONE
+			if(strcmp(knobNamesPerMode[BitcrusherMode][lastKnob], "NONE")==0) OLEDwriteLine(knobNamesPerMode[BitcrusherMode][lastKnob], 4, SecondLine);
+			else OLEDwriteString(knobNamesPerMode[BitcrusherMode][lastKnob], 4, 4, SecondLine, 0);
+
+			//display knob values if they correspond to a parameter
+			if(lastKnob == 2) OLEDwriteInt(rateRatio, 3, 64, SecondLine);
+			else if(lastKnob == 3) OLEDwriteInt(bitDepth, 3, 64, SecondLine);
+			/*
+			OLEDwriteInt(rateRatio, 3, 4, SecondLine);
+			OLEDwriteInt(bitDepth, 3, 76, SecondLine);
+			*/
+		}
+		else if (modeChain[chainIndex] == SynthMode)
+		{
+			//display name of knob parameter or NONE
+			if(strcmp(knobNamesPerMode[SynthMode][lastKnob], "NONE")==0) OLEDwriteLine(knobNamesPerMode[SynthMode][lastKnob], 4, SecondLine);
+			else OLEDwriteString(knobNamesPerMode[SynthMode][lastKnob], 4, 4, SecondLine, 0);
+
+			//display knob values if they correspond to a parameter
+			if(lastKnob == 0) OLEDwriteFixedFloat(glideTimeSynth*0.001f, 4, 3, 64, SecondLine); //displayed in seconds
+			else if(lastKnob == 1) OLEDwriteFixedFloat(synthGain, 4, 3, 64, SecondLine);
+			else if(lastKnob == 2) OLEDwriteKRangeFixedFloat(lpFreqSynth, 4, 1, 64, SecondLine);
+			else if(lastKnob == 3) OLEDwriteFixedFloat(detuneMaxSynth, 4, 2, 64, SecondLine);
+		}
+		else if (modeChain[chainIndex] == LevelMode)
+		{
+			//display name of knob parameter or NONE
+			if(strcmp(knobNamesPerMode[LevelMode][lastKnob], "NONE")==0) OLEDwriteLine(knobNamesPerMode[LevelMode][lastKnob], 4, SecondLine);
+			else OLEDwriteString(knobNamesPerMode[LevelMode][lastKnob], 4, 4, SecondLine, 0);
+
+			//display knob values if they correspond to a parameter
+			if(lastKnob == 2) OLEDwriteFixedFloat(inputLevel, 3, 2, 76, SecondLine);
+			else if(lastKnob == 3) OLEDwriteFixedFloat(outputLevel, 3, 2, 76, SecondLine);
+			/*
+			OLEDwriteFixedFloat(inputLevel, 3, 2, 4, SecondLine);
+			OLEDwriteFixedFloat(outputLevel, 3, 2, 76, SecondLine);
+			*/
+		}
+	}
+	else if (screen == EditScreen)
+	{
+		if (modeChain[chainIndex] == VocoderMode)
+		{
+			//display name of knob parameter or NONE
+			if(strcmp(knobNamesPerMode[VocoderMode][lastKnob], "NONE")==0) OLEDwriteLine(knobNamesPerMode[VocoderMode][lastKnob], 4, SecondLine);
+			else OLEDwriteString(knobNamesPerMode[VocoderMode][lastKnob], 4, 4, SecondLine, 0);
+
+			//display knob values if they correspond to a parameter
+			if(lastKnob == 0) OLEDwriteFixedFloat(glideTimeVoc*0.001f, 4, 3, 64, SecondLine);
+			else if(lastKnob == 2) OLEDwriteKRangeFixedFloat(lpFreqVoc, 4, 1, 64, SecondLine);
+			else if(lastKnob == 3) OLEDwriteFixedFloat(detuneMaxVoc, 4, 2, 64, SecondLine);
+		}
+		else if (modeChain[chainIndex] == FormantShiftMode)
+		{
+			//display NONE for non-formant knobs
+			if(strcmp(knobNamesPerMode[FormantShiftMode][lastKnob], "NONE")==0) OLEDwriteLine(knobNamesPerMode[FormantShiftMode][lastKnob], 4, SecondLine);
+			else
+			{
+				GFXfillRect(&theGFX, 0, 16, 128, 16, 0);
+				int emojiIndex = (int)(formantKnob * 8);
+				int pixel = (int)(formantKnob * 8 * 12);
+				if (pixel > 104) pixel = 104;
+				OLEDwriteString(formantEmojis[emojiIndex], 10, pixel%12, SecondLine, 0);
+			}
+		}
+		else if (modeChain[chainIndex] == PitchShiftMode)
+		{
+			//display name of knob parameter or NONE
+			if(strcmp(knobNamesPerMode[PitchShiftMode][lastKnob], "NONE")==0) OLEDwriteLine(knobNamesPerMode[PitchShiftMode][lastKnob], 4, SecondLine);
+			else OLEDwriteString(knobNamesPerMode[PitchShiftMode][lastKnob], 4, 4, SecondLine, 0);
+
+			//display knob values if they correspond to a parameter
+			if(lastKnob == 2) OLEDwriteFixedFloat(pitchFactor, 4, 2, 64, SecondLine);
+			else if(lastKnob == 0)
+			{
+				//handle negative/positive values
+				if(formantShiftFactorPS >= 0.0f) OLEDwriteFixedFloat(formantShiftFactorPS, 4, 2, 64, SecondLine);
+				else if(formantShiftFactorPS < 0.0f)
+				{
+					OLEDwriteString("-", 1, 64, SecondLine, 0);
+					OLEDwriteFixedFloat((formantShiftFactorPS*(-1.0f)), 3, 2, 76, SecondLine);
+				}
+			}
+		}
+		else if (modeChain[chainIndex] == AutotuneAbsoluteMode)
+		{
+			//display name of knob parameter or NONE
+			if(strcmp(knobNamesPerMode[AutotuneAbsoluteMode][lastKnob], "NONE")==0) OLEDwriteLine(knobNamesPerMode[AutotuneAbsoluteMode][lastKnob], 4, SecondLine);
+			else OLEDwriteString(knobNamesPerMode[AutotuneAbsoluteMode][lastKnob], 4, 4, SecondLine, 0);
+
+			//display knob values if they correspond to a parameter
+			if(lastKnob == 0) OLEDwriteFixedFloat(glideTimeAuto*0.001f, 4, 3, 64, SecondLine); //displayed in seconds
+		}
+		else if (modeChain[chainIndex] == AutotuneNearestMode)
+		{
+			//display name of knob parameter or NONE
+			if(strcmp(knobNamesPerMode[AutotuneNearestMode][lastKnob], "NONE")==0 && autotuneLock == 0) OLEDwriteLine(knobNamesPerMode[AutotuneNearestMode][lastKnob], 4, SecondLine);
+		}
+		else if (modeChain[chainIndex] == DelayMode)
+		{
+			//display name of knob parameter or NONE
+			if(strcmp(knobNamesPerMode[DelayMode][lastKnob], "NONE")==0) OLEDwriteLine(knobNamesPerMode[DelayMode][lastKnob], 4, SecondLine);
+			else OLEDwriteString(knobNamesPerMode[DelayMode][lastKnob], 4, 4, SecondLine, 0);
+
+			//display knob values if they correspond to a parameter
+			if(lastKnob == 0) OLEDwriteKRangeFixedFloat(hpFreqDel, 4, 1, 64, SecondLine);
+			else if(lastKnob == 1) OLEDwriteKRangeFixedFloat(lpFreqDel, 4, 1, 64, SecondLine);
+			else if(lastKnob == 2) OLEDwriteFixedFloat(newDelay*oops.invSampleRate, 4, 3, 64, SecondLine);
+			else if(lastKnob == 3) OLEDwriteFixedFloat(newFeedback, 4, 2, 64, SecondLine);
+			/*
+			OLEDwriteFixedFloat(newDelay*oops.invSampleRate, 4, 3, 4, SecondLine);
+			OLEDwriteFixedFloat(newFeedback, 3, 2, 76, SecondLine);
+			*/
+		}
+		else if (modeChain[chainIndex] == ReverbMode)
+		{
+			//display name of knob parameter or NONE
+			if(strcmp(knobNamesPerMode[ReverbMode][lastKnob], "NONE")==0) OLEDwriteLine(knobNamesPerMode[ReverbMode][lastKnob], 4, SecondLine);
+			else OLEDwriteString(knobNamesPerMode[ReverbMode][lastKnob], 4, 4, SecondLine, 0);
+
+			//display knob values if they correspond to a parameter
+			if(lastKnob == 0) OLEDwriteKRangeFixedFloat(hpFreqRev, 4, 1, 64, SecondLine);
+			else if(lastKnob == 1) OLEDwriteKRangeFixedFloat(lpFreqRev, 4, 1, 64, SecondLine);
+			else if(lastKnob == 2) OLEDwriteFixedFloat(t60, 4, 2, 64, SecondLine);
+			else if(lastKnob == 3) OLEDwriteFixedFloat(revMix, 4, 3, 64, SecondLine);
+		}
+		else if (modeChain[chainIndex] == DrumboxMode)
+		{
+			//display name of knob parameter or NONE
+			if(strcmp(knobNamesPerMode[DrumboxMode][lastKnob], "NONE")==0) OLEDwriteLine(knobNamesPerMode[DrumboxMode][lastKnob], 4, SecondLine);
+			else OLEDwriteString(knobNamesPerMode[DrumboxMode][lastKnob], 4, 4, SecondLine, 0);
+
+			//display knob values if they correspond to a parameter
+			if(lastKnob == 0) OLEDwriteFixedFloat(decayCoeff*0.001, 3, 2, 64, SecondLine); //displayed in seconds
+			else if(lastKnob == 1) OLEDwriteKRangeFixedFloat(newFreqDB, 4, 1, 64, SecondLine);
+			else if(lastKnob == 2) OLEDwriteFixedFloat(newDelayDB*oops.invSampleRate, 4, 3, 64, SecondLine);
+			else if(lastKnob == 3) OLEDwriteFixedFloat(newFeedbackDB, 4, 3, 64, SecondLine);
+			/*
+			OLEDwriteFixedFloat(newDelayDB*oops.invSampleRate, 4, 3, 4, SecondLine);
+			OLEDwriteFixedFloat(newFeedbackDB, 3, 2, 76, SecondLine);
+			*/
+		}
+		else if (modeChain[chainIndex] == BitcrusherMode)
+		{
+			//display name of knob parameter or NONE
+			if(strcmp(knobNamesPerMode[BitcrusherMode][lastKnob], "NONE")==0) OLEDwriteLine(knobNamesPerMode[BitcrusherMode][lastKnob], 4, SecondLine);
+			else OLEDwriteString(knobNamesPerMode[BitcrusherMode][lastKnob], 4, 4, SecondLine, 0);
+
+			//display knob values if they correspond to a parameter
+			if(lastKnob == 2) OLEDwriteInt(rateRatio, 3, 64, SecondLine);
+			else if(lastKnob == 3) OLEDwriteInt(bitDepth, 3, 64, SecondLine);
+			/*
+			OLEDwriteInt(rateRatio, 3, 4, SecondLine);
+			OLEDwriteInt(bitDepth, 3, 76, SecondLine);
+			*/
+		}
+		else if (modeChain[chainIndex] == SynthMode)
+		{
+			//display name of knob parameter or NONE
+			if(strcmp(knobNamesPerMode[SynthMode][lastKnob], "NONE")==0) OLEDwriteLine(knobNamesPerMode[SynthMode][lastKnob], 4, SecondLine);
+			else OLEDwriteString(knobNamesPerMode[SynthMode][lastKnob], 4, 4, SecondLine, 0);
+
+			//display knob values if they correspond to a parameter
+			if(lastKnob == 0) OLEDwriteFixedFloat(glideTimeSynth*0.001f, 4, 3, 64, SecondLine); //displayed in seconds
+			else if(lastKnob == 1) OLEDwriteFixedFloat(synthGain, 4, 3, 64, SecondLine);
+			else if(lastKnob == 2) OLEDwriteKRangeFixedFloat(lpFreqSynth, 4, 1, 64, SecondLine);
+			else if(lastKnob == 3) OLEDwriteFixedFloat(detuneMaxSynth, 4, 2, 64, SecondLine);
+		}
+		else if (modeChain[chainIndex] == LevelMode)
+		{
+			//display name of knob parameter or NONE
+			if(strcmp(knobNamesPerMode[LevelMode][lastKnob], "NONE")==0) OLEDwriteLine(knobNamesPerMode[LevelMode][lastKnob], 4, SecondLine);
+			else OLEDwriteString(knobNamesPerMode[LevelMode][lastKnob], 4, 4, SecondLine, 0);
+
+			//display knob values if they correspond to a parameter
+			if(lastKnob == 2) OLEDwriteFixedFloat(inputLevel, 3, 2, 76, SecondLine);
+			else if(lastKnob == 3) OLEDwriteFixedFloat(outputLevel, 3, 2, 76, SecondLine);
+			/*
+			OLEDwriteFixedFloat(inputLevel, 3, 2, 4, SecondLine);
+			OLEDwriteFixedFloat(outputLevel, 3, 2, 76, SecondLine);
+			*/
+		}
+		else if (modeChain[chainIndex] == DrawMode)
+		{
+			UIDrawFrame();
+		}
+	}
+}
+
 static void initKnobs(void)
 {
 	for (int i = 0; i < NUM_KNOBS; i++)
@@ -213,6 +532,11 @@ static void initKnobs(void)
 	knobNamesPerMode[AutotuneNearestMode][1] = "NONE";
 	knobNamesPerMode[AutotuneNearestMode][2] = "NONE";
 	knobNamesPerMode[AutotuneNearestMode][3] = "NONE";
+
+	knobNamesPerMode[HarmonizeMode][0] = "DEG";
+	knobNamesPerMode[HarmonizeMode][1] = "SCL";
+	knobNamesPerMode[HarmonizeMode][2] = "CPLX";
+	knobNamesPerMode[HarmonizeMode][3] = "HEAT";
 
 	knobNamesPerMode[DelayMode][0] = "HPHZ";
 	knobNamesPerMode[DelayMode][1] = "LPHZ";
@@ -669,6 +993,8 @@ static void initModeNames(void)
 	shortModeNames[AutotuneNearestMode] = "A1";
 	modeNames[AutotuneAbsoluteMode] = "ABSLTUNE  ";
 	shortModeNames[AutotuneAbsoluteMode] = "A2";
+	modeNames[HarmonizeMode] = "HARMNZ  ";
+	shortModeNames[HarmonizeMode] = "HZ";
 	modeNames[DelayMode] = "DELAY     ";
 	shortModeNames[DelayMode] = "DL";
 	modeNames[ReverbMode] = "REVERB    ";
