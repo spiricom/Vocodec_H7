@@ -64,7 +64,7 @@ char* formantEmojis[9] =
 	"        :D"
 };
 
-char* harmonizerKeys[10] =
+char* harmonizerKeys[12] =
 {
 	"   C",
 	"C#Db",
@@ -73,7 +73,9 @@ char* harmonizerKeys[10] =
 	"   E",
 	"   F",
 	"F#Gb",
+	"   G",
 	"G#Ab",
+	"   A",
 	"A#Bb",
 	"   B"
 };
@@ -85,6 +87,8 @@ char* harmonizerScales[2] =
 };
 
 char harmonizerParams[5];
+
+int clearLine = 1;
 
 void UIInit(uint16_t* myADCArray)
 {
@@ -283,14 +287,20 @@ void displayScreen(void)
 			else OLEDwriteString(knobNamesPerMode[HarmonizeMode][lastKnob], 4, 4, SecondLine, 0);
 
 			//display knob values if they correspond to a parameter
-			if(lastKnob == 0 || lastKnob == 1)
+			if((lastKnob == 0 || lastKnob == 1) && (playedNote == -1))
 			{
+				if (clearLine == 1) OLEDclearLine(SecondLine);
+				clearLine = 0;
+
 				strcpy(harmonizerParams, harmonizerKeys[harmonizerKey]);
 				strcat(harmonizerParams, harmonizerScales[harmonizerScale]);
-				OLEDwriteString(harmonizerKeys[harmonizerKey], 5, 64, SecondLine, 0);
+				OLEDwriteString(harmonizerParams, 5, 64, SecondLine, 0);
 			}
 			else
 			{
+				if (clearLine == 0) OLEDclearLine(SecondLine);
+				clearLine = 1;
+
 				OLEDwriteInt(sungNote, 2, 48, SecondLine);
 				OLEDwriteInt(playedNote, 2, 96, SecondLine);
 			}

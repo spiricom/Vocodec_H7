@@ -5,6 +5,7 @@
 #include "OOPSWavetables.h"
 
 #define NUM_FB_DELAY_TABLES 8
+#define SCALE_LENGTH 8
 
 float inBuffer[2048] __ATTR_RAM_D2;
 float outBuffer[NUM_SHIFTERS][2048] __ATTR_RAM_D2;
@@ -44,6 +45,8 @@ float FeedbackLookup[FEEDBACK_LOOKUP_SIZE] = { 0.0f, 0.8f, .999f, 1.0f, 1.03f };
 float DelayLookup[DELAY_LOOKUP_SIZE] = { 50.f, 180.f, 1400.f, 16300.f };
 float feedbackDelayPeriod[NUM_FB_DELAY_TABLES];
 //const float *feedbackDelayTable[NUM_FB_DELAY_TABLES] = { FB1, FB2, FB3, FB4, FB5, FB6, FB7, FB8 };
+const int majorOffsets[7] = {0, 2, 4, 5, 7, 9, 11};
+const int minorOffsets[7] = {0, 2, 3, 5, 7, 8, 10};
 
 int count = 0;
 
@@ -145,6 +148,8 @@ float interpolateDelayControl(float raw_data);
 float interpolateFeedback(float raw_data);
 float ksTick(float noise_in);
 void calculateFreq(int voice);
+int harmonize(int* triad);
+int inKey(void);
 
 /****************************************************************************************/
 
@@ -433,35 +438,39 @@ int32_t SFXAutotuneAbsoluteTick(int32_t input)
 
 void SFXHarmonizeFrame()
 {
-	int oldKey = harmonizerKey;
-	int oldScale = harmonizerScale;
-	__KNOBCHECK1__ { harmonizerKey = (int) floor(knobVals[0] * 9.999f); }
-	__KNOBCHECK2__ { harmonizerScale = (int) floor(knobVals[0] * 1.999f); }
+	__KNOBCHECK1__ { harmonizerKey = (int) floor(knobVals[0] * 11.0f + 0.5f); }
+	__KNOBCHECK2__ { harmonizerScale = (int) floor(knobVals[1] + 0.5f); }
 	__KNOBCHECK3__ {}
 	__KNOBCHECK4__ {}
-	if (oldKey != harmonizerKey || oldScale != harmonizerScale) {
-		harmonizerInit();
-	}
 }
 int32_t SFXHarmonizeTick(int32_t input)
 {
 	float sample = 0.0f;
 	float output = 0.0f;
-
-	int oldSungNote = sungNote;
+	int triad[3];
 
 	float freq;
 
 	sample = (float) (input * INV_TWO_TO_31);
 
 	freq = oops.sampleRate / tPeriod_findPeriod(p, sample);
-
-	oldSungNote = sungNote;
 	sungNote = round(OOPS_frequencyToMidi(freq));
 
-	if (oldSungNote != sungNote) {
-		harmonize();
+	int success = harmonize(triad);
+
+	if (!success)
+	{
+		return (int32_t) (output * TWO_TO_31);
 	}
+
+	// pitch shifting
+	sample = tFormantShifterRemove(fs, sample * 2.0f);
+
+	output += tPitchShift_shiftToFreq(pshift[0], OOPS_midiToFrequency(triad[0]));
+	output += tPitchShift_shiftToFreq(pshift[1], OOPS_midiToFrequency(triad[1]));
+	output += tPitchShift_shiftToFreq(pshift[2], OOPS_midiToFrequency(triad[2]));
+
+	output = tFormantShifterAdd(fs, output, 0.0f) * 0.5f;
 
 	return (int32_t) (output * TWO_TO_31);
 }
@@ -750,20 +759,69 @@ void SFXNoteOff(int key, int velocity)
 
 /**************** Helper Functions *********************/
 
-void harmonizerInit() {
+int harmonize(int* triad)
+{
+	int* offsets;
 
-}
-
-int harmonize() {
-	int noteArray[3];
-
-	if (sungNote == -1 || playedNote == -1) {
-		return (int) NULL;
+	if (sungNote == -1 || playedNote == -1 || !inKey())
+	{
+		//return (int*) NULL;
+		return 0;
 	}
 
-	// harmonization and voicing logic here
+	if (harmonizerScale > 1)
+	{
+		offsets = minorOffsets;
+	}
+	else
+	{
+		offsets = majorOffsets;
+	}
 
-	return noteArray[0];
+	int startIndex = -1;
+	for (int i = 0; i < SCALE_LENGTH; i++)
+	{
+		if ((playedNote % 12 - harmonizerKey + 12) % 12 == offsets[i])
+		{
+			startIndex = i;
+			break;
+		}
+	}
+
+	int triadIndex = 0;
+	for (int i = startIndex; i < startIndex + 5; i += 2)
+	{
+		int noteOffset;
+		if (i < SCALE_LENGTH)
+		{
+			noteOffset = offsets[i];
+		}
+		else
+		{
+			noteOffset = offsets[i % SCALE_LENGTH] + 12;
+		}
+		triad[triadIndex] = noteOffset + playedNote - ((playedNote - harmonizerKey) % 12);
+		triadIndex++;
+	}
+
+	return 1;
+}
+
+int inKey()
+{
+	int offset = (playedNote + 12) % 12;
+	for (int i = 0; i < SCALE_LENGTH; i++)
+	{
+		if (harmonizerScale > 1)
+		{
+			if (offset == (minorOffsets[i] + harmonizerKey) % 12) return 1;
+		}
+		else
+		{
+			if (offset == (majorOffsets[i] + harmonizerKey) % 12) return 1;
+		}
+	}
+	return 0;
 }
 
 
