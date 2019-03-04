@@ -77,6 +77,7 @@ int harmonizerScale = 0;
 int harmonizerComplexity = 0;
 int harmonizerHeat = 0;
 int harmonizerVoices = 3;
+InputMode harmonizerInputMode = Latch;
 
 // Delay
 float hpFreqDel = 20.0f;
@@ -451,13 +452,26 @@ int32_t SFXHarmonizeTick(int32_t input)
 {
 	float sample = 0.0f;
 	float output = 0.0f;
+	int mpolyMonoNote = -1;
 	int triad[3];
 
 	float freq;
 
 	// get mono pitch
 	tMPoly_tick(mpoly);
-	playedNote = tMPoly_getPitch(mpoly, 0);
+	mpolyMonoNote = tMPoly_getPitch(mpoly, 0);
+
+	// set playedNote based on whether latching is turned on
+	if (harmonizerInputMode == Latch) {
+		if (mpolyMonoNote != -1) {
+			playedNote = mpolyMonoNote;
+		} else if (mpolyMonoNote == playedNote)
+		{
+			playedNote = -1;
+		}
+	} else {
+		playedNote = mpolyMonoNote;
+	}
 
 	sample = (float) (input * INV_TWO_TO_31);
 
@@ -807,7 +821,14 @@ int harmonize(int* triad)
 		triadIndex++;
 	}
 
+	voice(triad);
+
 	return 1;
+}
+
+void voice(int* triad)
+{
+	// perform voicing
 }
 
 int inKey()

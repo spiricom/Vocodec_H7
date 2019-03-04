@@ -69,6 +69,11 @@ typedef enum LockState
 	LockNil
 } LockState;
 
+typedef enum InputMode {
+	Latch = 0,
+	Momentary
+} InputMode;
+
 extern VocodecMode modeChain[CHAIN_LENGTH];
 extern uint8_t chainIndex;
 extern uint8_t indexChained[CHAIN_LENGTH];

@@ -88,7 +88,7 @@ char* harmonizerScales[2] =
 
 char harmonizerParams[5];
 
-int clearLine = 1;
+int lastWritten = 1;
 
 void UIInit(uint16_t* myADCArray)
 {
@@ -289,18 +289,22 @@ void displayScreen(void)
 			//display knob values if they correspond to a parameter
 			if (lastKnob == 2)
 			{
-				OLEDclearLine(SecondLine);
-				OLEDwriteString(harmonizerComplexity, 5, 64, SecondLine, 0);
+				if (lastWritten != 2) OLEDclearLine(SecondLine);
+				lastWritten = 2;
+
+				OLEDwriteInt(harmonizerComplexity, 1, 64, SecondLine);
 			}
 			else if (lastKnob == 3)
 			{
-				OLEDclearLine(SecondLine);
-				OLEDwriteString(harmonizerHeat, 5, 64, SecondLine, 0);
+				if (lastWritten != 3) OLEDclearLine(SecondLine);
+				lastWritten = 3;
+
+				OLEDwriteInt(harmonizerHeat, 1, 64, SecondLine);
 			}
 			else if((lastKnob == 0 || lastKnob == 1) && (playedNote == -1))
 			{
-				if (clearLine == 1) OLEDclearLine(SecondLine);
-				clearLine = 0;
+				if (lastWritten != 0) OLEDclearLine(SecondLine);
+				lastWritten = 0;
 
 				strcpy(harmonizerParams, harmonizerKeys[harmonizerKey]);
 				strcat(harmonizerParams, harmonizerScales[harmonizerScale]);
@@ -308,8 +312,8 @@ void displayScreen(void)
 			}
 			else
 			{
-				if (clearLine == 0) OLEDclearLine(SecondLine);
-				clearLine = 1;
+				if (lastWritten != 1) OLEDclearLine(SecondLine);
+				lastWritten = 1;
 
 				OLEDwriteInt(sungNote, 2, 48, SecondLine);
 				OLEDwriteInt(playedNote, 2, 96, SecondLine);

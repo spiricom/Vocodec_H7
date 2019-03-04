@@ -47,6 +47,7 @@ extern int harmonizerKey;
 extern int harmonizerScale;
 extern int harmonizerComplexity;
 extern int harmonizerHeat;
+extern InputMode harmonizerInputMode;
 
 // Delay
 extern float hpFreqDel;
