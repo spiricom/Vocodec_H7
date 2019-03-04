@@ -42,7 +42,7 @@ typedef enum VocodecMode
 	PitchShiftMode,
 	AutotuneNearestMode,
 	AutotuneAbsoluteMode,
-	HarmonizeMode,
+	HarmonizerMode,
 	DelayMode,
 	DrumboxMode,
 	ReverbMode,

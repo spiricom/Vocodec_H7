@@ -76,6 +76,7 @@ int harmonizerKey = 0;
 int harmonizerScale = 0;
 int harmonizerComplexity = 0;
 int harmonizerHeat = 0;
+int harmonizerVoices = 3;
 
 // Delay
 float hpFreqDel = 20.0f;
@@ -186,6 +187,7 @@ void SFXInit(float sr, int blocksize)
 	numActiveVoices[VocoderMode] = 1;
 	numActiveVoices[AutotuneAbsoluteMode] = 1;
 	numActiveVoices[SynthMode] = 1;
+	numActiveVoices[HarmonizerMode] = 1;
 	vocoder = tTalkboxInit();
 	for (int i = 0; i < NUM_VOICES; i++)
 	{
@@ -243,10 +245,10 @@ void SFXInit(float sr, int blocksize)
 	knobValsPerMode[ReverbMode][2] = t60 * 0.1f;
 	knobValsPerMode[ReverbMode][3] = revMix;
 
-	knobValsPerMode[HarmonizeMode][0] = 0; // key
-	knobValsPerMode[HarmonizeMode][1] = 0; // scale
-	knobValsPerMode[HarmonizeMode][2] = 1; // complexity
-	knobValsPerMode[HarmonizeMode][3] = 0; // heat
+	knobValsPerMode[HarmonizerMode][0] = 0.5f; // key
+	knobValsPerMode[HarmonizerMode][1] = 0.5f; // scale
+	knobValsPerMode[HarmonizerMode][2] = 0.5f; // complexity
+	knobValsPerMode[HarmonizerMode][3] = 0.5f; // heat
 
 	knobValsPerMode[BitcrusherMode][2] = rateRatio / 128.0f;
 	knobValsPerMode[BitcrusherMode][3] = bitDepth / 16.0f;
@@ -438,6 +440,8 @@ int32_t SFXAutotuneAbsoluteTick(int32_t input)
 
 void SFXHarmonizeFrame()
 {
+	tMPoly_setNumVoices(mpoly, numActiveVoices[VocoderMode]);
+
 	__KNOBCHECK1__ { harmonizerKey = (int) floor(knobVals[0] * 11.0f + 0.5f); }
 	__KNOBCHECK2__ { harmonizerScale = (int) floor(knobVals[1] + 0.5f); }
 	__KNOBCHECK3__ { harmonizerComplexity = (int) floor(knobVals[2] * 3.0f + 0.5f); }
@@ -451,6 +455,10 @@ int32_t SFXHarmonizeTick(int32_t input)
 
 	float freq;
 
+	// get mono pitch
+	tMPoly_tick(mpoly);
+	playedNote = tMPoly_getPitch(mpoly, 0);
+
 	sample = (float) (input * INV_TWO_TO_31);
 
 	freq = oops.sampleRate / tPeriod_findPeriod(p, sample);
@@ -458,7 +466,7 @@ int32_t SFXHarmonizeTick(int32_t input)
 
 	int success = harmonize(triad);
 
-	if (!success)
+	if (success == 0)
 	{
 		return (int32_t) (output * TWO_TO_31);
 	}
@@ -466,9 +474,10 @@ int32_t SFXHarmonizeTick(int32_t input)
 	// pitch shifting
 	sample = tFormantShifterRemove(fs, sample * 2.0f);
 
-	output += tPitchShift_shiftToFreq(pshift[0], OOPS_midiToFrequency(triad[0]));
-	output += tPitchShift_shiftToFreq(pshift[1], OOPS_midiToFrequency(triad[1]));
-	output += tPitchShift_shiftToFreq(pshift[2], OOPS_midiToFrequency(triad[2]));
+	for (int i = 0; i < harmonizerVoices; i++)
+	{
+		output += tPitchShift_shiftToFreq(pshift[i], OOPS_midiToFrequency(triad[i])) * tRampTick(ramp[0]);
+	}
 
 	output = tFormantShifterAdd(fs, output, 0.0f) * 0.5f;
 
@@ -724,8 +733,6 @@ void SFXNoteOn(int key, int velocity)
 	chordArray[key%12]++;
 	tMPoly_noteOn(mpoly, key, velocity);
 
-	playedNote = key;
-
 	for (int i = 0; i < mpoly->numVoices; i++)
 	{
 		if (tMPoly_isOn(mpoly, i) == 1)
@@ -741,10 +748,6 @@ void SFXNoteOff(int key, int velocity)
 	if (chordArray[key%12] > 0) chordArray[key%12]--;
 
 	int voice = tMPoly_noteOff(mpoly, key);
-
-	if (key == playedNote) {
-		playedNote = -1;
-	}
 
 	if (voice >= 0) tRampSetDest(ramp[voice], 0.0f);
 	for (int i = 0; i < tMPoly_getNumVoices(mpoly); i++)

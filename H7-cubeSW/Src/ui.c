@@ -103,7 +103,7 @@ void UIInit(uint16_t* myADCArray)
 		modeChain[i] = ModeNil;
 		indexChained[i] = 1;
 	}
-	modeChain[0] = HarmonizeMode;
+	modeChain[0] = HarmonizerMode;
 	setAvailableModes();
 
 	writeScreen();
@@ -280,11 +280,11 @@ void displayScreen(void)
 			//display name of knob parameter or NONE
 			if(autotuneLock == 0) OLEDclearLine(SecondLine);
 		}
-		else if (modeChain[chainIndex] == HarmonizeMode)
+		else if (modeChain[chainIndex] == HarmonizerMode)
 		{
 			//display name of knob parameter or NONE
-			if(strcmp(knobNamesPerMode[HarmonizeMode][lastKnob], "NONE")==0) OLEDwriteLine(knobNamesPerMode[HarmonizeMode][lastKnob], 4, SecondLine);
-			else OLEDwriteString(knobNamesPerMode[HarmonizeMode][lastKnob], 4, 4, SecondLine, 0);
+			if(strcmp(knobNamesPerMode[HarmonizerMode][lastKnob], "NONE")==0) OLEDwriteLine(knobNamesPerMode[HarmonizerMode][lastKnob], 4, SecondLine);
+			else OLEDwriteString(knobNamesPerMode[HarmonizerMode][lastKnob], 4, 4, SecondLine, 0);
 
 			//display knob values if they correspond to a parameter
 			if (lastKnob == 2)
@@ -585,10 +585,10 @@ static void initKnobs(void)
 	knobNamesPerMode[AutotuneNearestMode][2] = "NONE";
 	knobNamesPerMode[AutotuneNearestMode][3] = "NONE";
 
-	knobNamesPerMode[HarmonizeMode][0] = "KEY";
-	knobNamesPerMode[HarmonizeMode][1] = "SCL";
-	knobNamesPerMode[HarmonizeMode][2] = "CPLX";
-	knobNamesPerMode[HarmonizeMode][3] = "HEAT";
+	knobNamesPerMode[HarmonizerMode][0] = "KEY";
+	knobNamesPerMode[HarmonizerMode][1] = "SCL";
+	knobNamesPerMode[HarmonizerMode][2] = "CPLX";
+	knobNamesPerMode[HarmonizerMode][3] = "HEAT";
 
 	knobNamesPerMode[DelayMode][0] = "HPHZ";
 	knobNamesPerMode[DelayMode][1] = "LPHZ";
@@ -1045,8 +1045,8 @@ static void initModeNames(void)
 	shortModeNames[AutotuneNearestMode] = "A1";
 	modeNames[AutotuneAbsoluteMode] = "ABSLTUNE  ";
 	shortModeNames[AutotuneAbsoluteMode] = "A2";
-	modeNames[HarmonizeMode] = "HARMNZ  ";
-	shortModeNames[HarmonizeMode] = "HZ";
+	modeNames[HarmonizerMode] = "HARMNZ  ";
+	shortModeNames[HarmonizerMode] = "HZ";
 	modeNames[DelayMode] = "DELAY     ";
 	shortModeNames[DelayMode] = "DL";
 	modeNames[ReverbMode] = "REVERB    ";

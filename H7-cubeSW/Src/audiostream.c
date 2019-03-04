@@ -148,8 +148,8 @@ static void initFunctionPointers(void)
 	frameFunctions[AutotuneAbsoluteMode] = SFXAutotuneAbsoluteFrame;
 	tickFunctions[AutotuneAbsoluteMode] = SFXAutotuneAbsoluteTick;
 
-	frameFunctions[HarmonizeMode] = SFXHarmonizeFrame;
-	tickFunctions[HarmonizeMode] = SFXHarmonizeTick;
+	frameFunctions[HarmonizerMode] = SFXHarmonizeFrame;
+	tickFunctions[HarmonizerMode] = SFXHarmonizeTick;
 
 	frameFunctions[DelayMode] = SFXDelayFrame;
 	tickFunctions[DelayMode] = SFXDelayTick;
