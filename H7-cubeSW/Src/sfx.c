@@ -440,8 +440,8 @@ void SFXHarmonizeFrame()
 {
 	__KNOBCHECK1__ { harmonizerKey = (int) floor(knobVals[0] * 11.0f + 0.5f); }
 	__KNOBCHECK2__ { harmonizerScale = (int) floor(knobVals[1] + 0.5f); }
-	__KNOBCHECK3__ {}
-	__KNOBCHECK4__ {}
+	__KNOBCHECK3__ { harmonizerComplexity = (int) floor(knobVals[2] * 3.0f + 0.5f); }
+	__KNOBCHECK4__ { harmonizerHeat = (int) floor(knobVals[2] * 3.0f + 0.5f); }
 }
 int32_t SFXHarmonizeTick(int32_t input)
 {

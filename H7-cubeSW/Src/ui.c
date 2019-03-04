@@ -287,7 +287,17 @@ void displayScreen(void)
 			else OLEDwriteString(knobNamesPerMode[HarmonizeMode][lastKnob], 4, 4, SecondLine, 0);
 
 			//display knob values if they correspond to a parameter
-			if((lastKnob == 0 || lastKnob == 1) && (playedNote == -1))
+			if (lastKnob == 2)
+			{
+				OLEDclearLine(SecondLine);
+				OLEDwriteString(harmonizerComplexity, 5, 64, SecondLine, 0);
+			}
+			else if (lastKnob == 3)
+			{
+				OLEDclearLine(SecondLine);
+				OLEDwriteString(harmonizerHeat, 5, 64, SecondLine, 0);
+			}
+			else if((lastKnob == 0 || lastKnob == 1) && (playedNote == -1))
 			{
 				if (clearLine == 1) OLEDclearLine(SecondLine);
 				clearLine = 0;
