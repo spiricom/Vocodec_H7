@@ -345,6 +345,9 @@ float audioTickFeedback(float audioIn)
 	float pedal = tRampTick(adc[ADCPedal]);
 	pedal = OOPS_clip(0.0f, pedal - 0.05f, 1.0f);
 
+	tSawtoothSetFreq(osc, 200);
+	sample = tSawtoothTick(osc);
+	/*
 	sample = 0.0f;
 
 	calculatePeaks();
@@ -396,6 +399,8 @@ float audioTickFeedback(float audioIn)
 	//sample *= 0.1f;
 
 	//sample = tCycleTick(sine) * 0.5f * pedal;
+
+	 */
 	return sample;
 
 }
