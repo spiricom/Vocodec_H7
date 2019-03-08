@@ -47,22 +47,22 @@ float valPerM;
 float mPerVal;
 
 
-tSawtooth* osc;
-tRamp* adc[5];
-tRamp* slideRamp;
-tRamp* finalFreqRamp;
+tSawtooth osc;
+tRamp adc[5];
+tRamp slideRamp;
+tRamp finalFreqRamp;
 
-tSVF* filter1;
-tSVF* filter2;
+tSVF filter1;
+tSVF filter2;
 
-tCycle* sine;
+tCycle sine;
 
-tRamp* qRamp;
+tRamp qRamp;
 
-tRamp* correctionRamp;
-tDelayL* correctionDelay;
+tRamp correctionRamp;
+tDelayL correctionDelay;
 
-tCompressor* compressor;
+tCompressor compressor;
 
 float breath_baseline = 0.0f;
 float breath_mult = 0.0f;
@@ -125,7 +125,7 @@ float audioTickFeedback(float audioIn);
 void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTypeDef* hsaiIn, RNG_HandleTypeDef* hrand, uint16_t* myADCArray)
 { 
 	// Initialize the audio library. OOPS.
-	OOPSInit(SAMPLE_RATE, AUDIO_FRAME_SIZE, &randomNumber);
+	LEAF_init(SAMPLE_RATE, AUDIO_FRAME_SIZE, &randomNumber);
 
 	//now to send all the necessary messages to the codec
 	AudioCodec_init(hi2c);
@@ -134,22 +134,23 @@ void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTy
 
 	adcVals = myADCArray;
 
-	sine = tCycleInit();
-	tCycleSetFreq(sine, 220.0f);
+	tCycle_init(&sine);
+	tCycle_setFreq(&sine, 220.0f);
 
-	osc = tSawtoothInit();
-	tSawtoothSetFreq(osc, 200.f);
+	tSawtooth_init(&osc);
+	tSawtooth_setFreq(&osc, 200.f);
 
-	correctionRamp = tRampInit(10, 1);
-	correctionDelay = tDelayLInit(0);
+	tRamp_init(&correctionRamp, 10, 1);
+	// 16000 was max delay length in OOPS, can change this once we start using this with the fbt
+	tDelayL_init(&correctionDelay, 0, 16000);
 
-	qRamp = tRampInit(10, 1);
+	tRamp_init(&qRamp, 10, 1);
 
-	adc[ADCJoyY] = tRampInit(18, 1);
-	adc[ADCKnob] = tRampInit(5,1);
-	adc[ADCPedal] = tRampInit(18, 1);
-	adc[ADCBreath] = tRampInit(1, 1);
-	adc[ADCSlide] = tRampInit(20, AUDIO_FRAME_SIZE);
+	tRamp_init(&adc[ADCJoyY], 18, 1);
+	tRamp_init(&adc[ADCKnob], 5, 1);
+	tRamp_init(&adc[ADCPedal], 18, 1);
+	tRamp_init(&adc[ADCBreath], 1, 1);
+	tRamp_init(&adc[ADCSlide], 20, AUDIO_FRAME_SIZE);
 
 	/*
 	compressor = tCompressorInit();
@@ -164,8 +165,8 @@ void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTy
 	*/
 
 
-	slideRamp = tRampInit(20, 1);
-	finalFreqRamp = tRampInit(5, 1);
+	tRamp_init(&slideRamp, 20, 1);
+	tRamp_init(&finalFreqRamp, 5, 1);
 
 	breath_baseline = ((adcVals[ADCBreath] * INV_TWO_TO_16) + 0.1f);
 	breath_mult = 1.0f / (1.0f-breath_baseline);
@@ -176,9 +177,9 @@ void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTy
 
 	// right shift 4 because our valPerM measure is originally from 12 bit data. now we are using 16 bit adc for controller input, so scaling was all off.
 	firstPositionValue = adcVals[ADCSlide] >> 4;
-	tRampSetVal(slideRamp,firstPositionValue);
+	tRamp_setVal(&slideRamp, firstPositionValue);
 
-	filter1 = tSVFInit(SVFTypeBandpass, 2000.0f, 1000.0f);
+	tSVF_init(&filter1, SVFTypeBandpass, 2000.0f, 1000.0f);
 
 	// set up the I2S driver to send audio data to the codec (and retrieve input as well)
 	transmit_status = HAL_SAI_Transmit_DMA(hsaiOut, (uint8_t *)&audioOutBuffer[0], AUDIO_BUFFER_SIZE);
@@ -194,18 +195,18 @@ void audioFrame(uint16_t buffer_offset)
 	int32_t current_sample = 0;
 
 
-	tRampSetDest(adc[ADCPedal], (adcVals[ADCPedal] * INV_TWO_TO_16));
-	tRampSetDest(adc[ADCKnob], (adcVals[ADCKnob] * INV_TWO_TO_16));
-	tRampSetDest(adc[ADCJoyY], 1.0f - ((adcVals[ADCJoyY] * INV_TWO_TO_16) - 0.366f) * 3.816f);
+	tRamp_setDest(&adc[ADCPedal], (adcVals[ADCPedal] * INV_TWO_TO_16));
+	tRamp_setDest(&adc[ADCKnob], (adcVals[ADCKnob] * INV_TWO_TO_16));
+	tRamp_setDest(&adc[ADCJoyY], 1.0f - ((adcVals[ADCJoyY] * INV_TWO_TO_16) - 0.366f) * 3.816f);
 
 	// right shift 4 because our valPerM measure is originally from 12 bit data. now we are using 16 bit adc for controller input, so scaling was all off.
-	tRampSetDest(adc[ADCSlide], adcVals[ADCSlide] >> 4);
-	position = tRampTick(adc[ADCSlide]);
+	tRamp_setDest(&adc[ADCSlide], adcVals[ADCSlide] >> 4);
+	position = tRamp_tick(&adc[ADCSlide]);
 
 	slideLengthDiff = (position - firstPositionValue) * mPerVal * slide_tune;
 	slideLengthM = (position - firstPositionValue) * mPerVal;
 	slideLengthPreRamp = fundamental_m + slideLengthDiff;
-	tRampSetDest(slideRamp, slideLengthPreRamp);
+	tRamp_setDest(&slideRamp, slideLengthPreRamp);
 
 	if (ftMode == FTFeedback)
 	{
@@ -245,11 +246,11 @@ void audioFrame(uint16_t buffer_offset)
 
 static void calculatePeaks(void)
 {
-	slideLength = tRampTick(slideRamp);
+	slideLength = tRamp_tick(&slideRamp);
 	float x = 12.0f * logf(slideLength / fundamental_m) * INV_LOG2;
 	fundamental = fundamental_hz * powf(2.0f, (-x * INV_TWELVE));
 
-	floatHarmonic = tRampTick(adc[ADCJoyY]) * 2.0f - 1.0f;
+	floatHarmonic = tRamp_tick(&adc[ADCJoyY]) * 2.0f - 1.0f;
 	floatHarmonic = (floatHarmonic < 0.0f) ? 1.0f : (floatHarmonic * NUM_HARMONICS + 1.0f);
 
 	if (((floatHarmonic - intHarmonic) > (harmonicHysteresis)) || ((floatHarmonic - intHarmonic) < ( -1.0f * harmonicHysteresis)))
@@ -304,11 +305,11 @@ float audioTickSynth(float audioIn)
 
 	calculatePeaks();
 
-	tRampSetDest(finalFreqRamp, intPeak);
+	tRamp_setDest(&finalFreqRamp, intPeak);
 
-	float pedal = tRampTick(adc[ADCPedal]);
+	float pedal = tRamp_tick(&adc[ADCPedal]);
 
-	knobValueToUse = tRampTick(adc[ADCKnob]);
+	knobValueToUse = tRamp_tick(&adc[ADCKnob]);
 
 
 	breath = adcVals[ADCBreath];
@@ -320,14 +321,14 @@ float audioTickSynth(float audioIn)
 	if (breath < 0.0f)					breath = 0.0f;
 	else if (breath > 1.0f)		  breath = 1.0f;
 
-	tRampSetDest(adc[ADCBreath], breath);
+	tRamp_setDest(&adc[ADCBreath], breath);
 
-	rampedBreath = tRampTick(adc[ADCBreath]);
+	rampedBreath = tRamp_tick(&adc[ADCBreath]);
 
 
-	tSawtoothSetFreq(osc, tRampTick(finalFreqRamp));
+	tSawtooth_setFreq(&osc, tRamp_tick(&finalFreqRamp));
 
-	sample = tSawtoothTick(osc);
+	sample = tSawtooth_tick(&osc);
 
 	//sample *= pedal;
 
@@ -342,11 +343,11 @@ float audioTickSynth(float audioIn)
 float knob, Q;
 float audioTickFeedback(float audioIn)
 {
-	float pedal = tRampTick(adc[ADCPedal]);
-	pedal = OOPS_clip(0.0f, pedal - 0.05f, 1.0f);
+	float pedal = tRamp_tick(&adc[ADCPedal]);
+	pedal = LEAF_clip(0.0f, pedal - 0.05f, 1.0f);
 
-	tSawtoothSetFreq(osc, 200);
-	sample = tSawtoothTick(osc);
+	tSawtooth_setFreq(&osc, 200);
+	sample = tSawtooth_tick(&osc);
 	/*
 	sample = 0.0f;
 

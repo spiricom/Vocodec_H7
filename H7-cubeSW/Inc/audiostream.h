@@ -31,7 +31,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm32h7xx_hal.h"
 
-#include "OOPS.h"
+#include "leaf.h"
 
 #define AUDIO_FRAME_SIZE     16
 #define HALF_BUFFER_SIZE      AUDIO_FRAME_SIZE * 2 //number of samples per half of the "double-buffer" (twice the audio frame size because there are interleaved samples for both left and right channels)
@@ -76,7 +76,7 @@ extern uint16_t slideValue;
 
 extern FTMode ftMode;
 extern KnobMode kMode;
-extern tRamp* adc[5];
+extern tRamp adc[5];
 
 extern float intHarmonic;
 extern float floatHarmonic;
