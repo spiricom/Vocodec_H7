@@ -87,6 +87,7 @@ char* harmonizerScales[2] =
 };
 
 char harmonizerParams[5];
+char harmonizerNotes[11];
 
 int lastWritten = 1;
 
@@ -283,39 +284,55 @@ void displayScreen(void)
 		else if (modeChain[chainIndex] == HarmonizerMode)
 		{
 			//display name of knob parameter or NONE
-			if(strcmp(knobNamesPerMode[HarmonizerMode][lastKnob], "NONE")==0) OLEDwriteLine(knobNamesPerMode[HarmonizerMode][lastKnob], 4, SecondLine);
-			else OLEDwriteString(knobNamesPerMode[HarmonizerMode][lastKnob], 4, 4, SecondLine, 0);
+			if (playedNote == -1)
+			{
+				if(strcmp(knobNamesPerMode[HarmonizerMode][lastKnob], "NONE") == 0)
+				{
+					OLEDwriteLine(knobNamesPerMode[HarmonizerMode][lastKnob], 4, SecondLine);
+				}
+				else
+				{
+					OLEDwriteString(knobNamesPerMode[HarmonizerMode][lastKnob], 4, 4, SecondLine, 0);
+				}
+			}
 
 			//display knob values if they correspond to a parameter
-			if (lastKnob == 2)
+			if (playedNote == -1)
 			{
-				if (lastWritten != 2) OLEDclearLine(SecondLine);
-				lastWritten = 2;
+				if (lastKnob == 2)
+				{
+					if (lastWritten != 2) OLEDclearLine(SecondLine);
+					lastWritten = 2;
 
-				OLEDwriteInt(harmonizerComplexity, 1, 64, SecondLine);
-			}
-			else if (lastKnob == 3)
-			{
-				if (lastWritten != 3) OLEDclearLine(SecondLine);
-				lastWritten = 3;
+					OLEDwriteInt(harmonizerComplexity, 1, 64, SecondLine);
+				}
+				else if (lastKnob == 3)
+				{
+					if (lastWritten != 3) OLEDclearLine(SecondLine);
+					lastWritten = 3;
 
-				OLEDwriteInt(harmonizerHeat, 1, 64, SecondLine);
-			}
-			else if((lastKnob == 0 || lastKnob == 1) && (playedNote == -1))
-			{
-				if (lastWritten != 0) OLEDclearLine(SecondLine);
-				lastWritten = 0;
+					OLEDwriteInt(harmonizerHeat, 1, 64, SecondLine);
+				}
+				else
+				{
+					if (lastWritten != 1) OLEDclearLine(SecondLine);
+					lastWritten = 1;
 
-				strcpy(harmonizerParams, harmonizerKeys[harmonizerKey]);
-				strcat(harmonizerParams, harmonizerScales[harmonizerScale]);
-				OLEDwriteString(harmonizerParams, 5, 64, SecondLine, 0);
+					strcpy(harmonizerParams, harmonizerKeys[harmonizerKey]);
+					strcat(harmonizerParams, harmonizerScales[harmonizerScale]);
+					OLEDwriteString(harmonizerParams, 5, 64, SecondLine, 0);
+				}
 			}
 			else
 			{
-				if (lastWritten != 1) OLEDclearLine(SecondLine);
-				lastWritten = 1;
+				if (lastWritten != 0) {
+					OLEDclearLine(SecondLine);
+					strcpy(harmonizerNotes, "S:    P:   ");
+					OLEDwriteString(harmonizerNotes, 11, 0, SecondLine, 0);
+				}
+				lastWritten = 0;
 
-				OLEDwriteInt(sungNote, 2, 48, SecondLine);
+				OLEDwriteInt(sungNote, 2, 24, SecondLine);
 				OLEDwriteInt(playedNote, 2, 96, SecondLine);
 			}
 		}

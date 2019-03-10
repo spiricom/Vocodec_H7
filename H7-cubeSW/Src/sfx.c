@@ -72,12 +72,13 @@ float glideTimeAuto = 5.0f;
 // Harmonizer
 int sungNote = -1;
 int playedNote = -1;
+int latchedNote = -1;
 int harmonizerKey = 0;
 int harmonizerScale = 0;
 int harmonizerComplexity = 0;
 int harmonizerHeat = 0;
 int harmonizerVoices = 3;
-InputMode harmonizerInputMode = Latch;
+InputMode harmonizerInputMode = Momentary;
 
 // Delay
 float hpFreqDel = 20.0f;
@@ -453,6 +454,7 @@ int32_t SFXHarmonizeTick(int32_t input)
 	float sample = 0.0f;
 	float output = 0.0f;
 	int mpolyMonoNote = -1;
+	int mpolyMonoVel = -1;
 	int triad[3];
 
 	float freq;
@@ -460,17 +462,21 @@ int32_t SFXHarmonizeTick(int32_t input)
 	// get mono pitch
 	tMPoly_tick(mpoly);
 	mpolyMonoNote = tMPoly_getPitch(mpoly, 0);
+	mpolyMonoVel = tMPoly_getVelocity(mpoly, 0);
 
 	// set playedNote based on whether latching is turned on
 	if (harmonizerInputMode == Latch) {
-		if (mpolyMonoNote != -1) {
-			playedNote = mpolyMonoNote;
-		} else if (mpolyMonoNote == playedNote)
-		{
-			playedNote = -1;
+		if (mpolyMonoVel > 0) {
+			latchedNote = mpolyMonoNote;
 		}
 	} else {
+		latchedNote = -1;
+	}
+
+	if (mpolyMonoVel > 0) {
 		playedNote = mpolyMonoNote;
+	} else {
+		playedNote = -1;
 	}
 
 	sample = (float) (input * INV_TWO_TO_31);
