@@ -5,7 +5,8 @@
 #include "OOPSWavetables.h"
 
 #define NUM_FB_DELAY_TABLES 8
-#define SCALE_LENGTH 8
+#define SCALE_LENGTH 7
+#define NELEMS(x)  (sizeof(x) / sizeof((x)[0]))
 
 float inBuffer[2048] __ATTR_RAM_D2;
 float outBuffer[NUM_SHIFTERS][2048] __ATTR_RAM_D2;
@@ -73,12 +74,14 @@ float glideTimeAuto = 5.0f;
 int sungNote = -1;
 int playedNote = -1;
 int latchedNote = -1;
+int lastTriad[3];
+int shouldVoice = 0;
 int harmonizerKey = 0;
 int harmonizerScale = 0;
 int harmonizerComplexity = 0;
 int harmonizerHeat = 0;
 int harmonizerVoices = 3;
-InputMode harmonizerInputMode = Momentary;
+InputMode harmonizerInputMode = Latch;
 
 // Delay
 float hpFreqDel = 20.0f;
@@ -152,7 +155,11 @@ float interpolateFeedback(float raw_data);
 float ksTick(float noise_in);
 void calculateFreq(int voice);
 int harmonize(int* triad);
-int inKey(void);
+int inKey(int note);
+int calcDistance(int* x, int* y);
+int copyTriad(int* src, int* dest);
+void sortTriad(int* x);
+void swap(int* x, int i, int j);
 
 /****************************************************************************************/
 
@@ -442,22 +449,22 @@ int32_t SFXAutotuneAbsoluteTick(int32_t input)
 
 void SFXHarmonizeFrame()
 {
-	tMPoly_setNumVoices(mpoly, numActiveVoices[VocoderMode]);
+	tMPoly_setNumVoices(mpoly, 1);
 
 	__KNOBCHECK1__ { harmonizerKey = (int) floor(knobVals[0] * 11.0f + 0.5f); }
 	__KNOBCHECK2__ { harmonizerScale = (int) floor(knobVals[1] + 0.5f); }
 	__KNOBCHECK3__ { harmonizerComplexity = (int) floor(knobVals[2] * 3.0f + 0.5f); }
-	__KNOBCHECK4__ { harmonizerHeat = (int) floor(knobVals[2] * 3.0f + 0.5f); }
+	__KNOBCHECK4__ { harmonizerHeat = (int) floor(knobVals[3] * 3.0f + 0.5f); }
 }
 int32_t SFXHarmonizeTick(int32_t input)
 {
 	float sample = 0.0f;
 	float output = 0.0f;
+	float freq;
 	int mpolyMonoNote = -1;
 	int mpolyMonoVel = -1;
 	int triad[3];
-
-	float freq;
+	int voices;
 
 	// get mono pitch
 	tMPoly_tick(mpoly);
@@ -494,9 +501,23 @@ int32_t SFXHarmonizeTick(int32_t input)
 	// pitch shifting
 	sample = tFormantShifterRemove(fs, sample * 2.0f);
 
-	for (int i = 0; i < harmonizerVoices; i++)
+	// find limiting factor and set the number of voices accordingly
+	if (harmonizerComplexity < harmonizerVoices) {
+		voices = harmonizerComplexity;
+	} else {
+		voices = harmonizerVoices;
+	}
+
+	for (int i = 0; i < voices; i++)
 	{
-		output += tPitchShift_shiftToFreq(pshift[i], OOPS_midiToFrequency(triad[i])) * tRampTick(ramp[0]);
+		if (harmonizerInputMode == Latch)
+		{
+			output += tPitchShift_shiftToFreq(pshift[i], OOPS_midiToFrequency(triad[i]));
+		}
+		else
+		{
+			output += tPitchShift_shiftToFreq(pshift[i], OOPS_midiToFrequency(triad[i])) * tRampTick(ramp[0]);
+		}
 	}
 
 	output = tFormantShifterAdd(fs, output, 0.0f) * 0.5f;
@@ -785,14 +806,23 @@ void SFXNoteOff(int key, int velocity)
 int harmonize(int* triad)
 {
 	int* offsets;
+	int computedNote;
 
-	if (sungNote == -1 || playedNote == -1 || !inKey())
+	if (harmonizerInputMode == Latch)
 	{
-		//return (int*) NULL;
+		computedNote = latchedNote;
+	}
+	else
+	{
+		computedNote = playedNote;
+	}
+
+	if (sungNote == -1 || computedNote == -1 || inKey(computedNote) == 0)
+	{
 		return 0;
 	}
 
-	if (harmonizerScale > 1)
+	if (harmonizerScale == 1)
 	{
 		offsets = minorOffsets;
 	}
@@ -804,7 +834,7 @@ int harmonize(int* triad)
 	int startIndex = -1;
 	for (int i = 0; i < SCALE_LENGTH; i++)
 	{
-		if ((playedNote % 12 - harmonizerKey + 12) % 12 == offsets[i])
+		if ((computedNote % 12 - harmonizerKey + 12) % 12 == offsets[i])
 		{
 			startIndex = i;
 			break;
@@ -823,32 +853,149 @@ int harmonize(int* triad)
 		{
 			noteOffset = offsets[i % SCALE_LENGTH] + 12;
 		}
-		triad[triadIndex] = noteOffset + playedNote - ((playedNote - harmonizerKey) % 12);
+		triad[triadIndex] = noteOffset + sungNote - ((sungNote - harmonizerKey) % 12);
 		triadIndex++;
 	}
 
-	voice(triad);
+	// copy triad to be rearranged and evaluated
+	int evalTriad[3];
+	copyTriad(triad, evalTriad);
+
+	// triad ends up with best voicing
+	if (shouldVoice == 1) voice(evalTriad, triad);
+
+	// preserve voiced triad in lastTriad
+	copyTriad(triad, lastTriad);
+	// always voice after triad has been voiced
+	shouldVoice = 1;
 
 	return 1;
 }
 
-void voice(int* triad)
+void voice(int* triad, int* bestTriad)
 {
-	// perform voicing
+	int distance = calcDistance(triad, lastTriad);
+    int bestDistance = distance;
+
+    // first inversion up
+    triad[0] = triad[0] + 12;
+    sortTriad(triad);
+
+    distance = calcDistance(triad, lastTriad);
+    if (distance < bestDistance)
+    {
+        bestDistance = distance;
+        copyTriad(triad, bestTriad);
+    }
+
+    // second inversion up
+    triad[0] = triad[0] + 12;
+    sortTriad(triad);
+
+    distance = calcDistance(triad, lastTriad);
+    if (distance < bestDistance)
+    {
+        bestDistance = distance;
+        copyTriad(triad, bestTriad);
+    }
+
+    // one octave positive transpose of original triad
+    triad[0] = triad[0] + 12;
+    sortTriad(triad);
+
+    // transpose two octaves down
+    for (int i = 0; i < NELEMS(triad); i++)
+    {
+    	triad[i] = triad[i] - 24;
+    }
+
+    // first inversion down
+    triad[0] = triad[0] + 12;
+    sortTriad(triad);
+
+    distance = calcDistance(triad, lastTriad);
+    if (distance < bestDistance)
+    {
+    	bestDistance = distance;
+    	copyTriad(triad, bestTriad);
+    }
+
+    // second inversion down
+    triad[0] = triad[0] + 12;
+    sortTriad(triad);
+
+    distance = calcDistance(triad, lastTriad);
+    if (distance < bestDistance)
+    {
+    	copyTriad(triad, bestTriad);
+    }
 }
 
-int inKey()
+int calcDistance(int* x, int* y)
 {
-	int offset = (playedNote + 12) % 12;
+	int d = 0;
+	if (NELEMS(x) != NELEMS(y))
+	{
+		return -1;
+	}
+	for (int i = 0; i < (int) NELEMS(x); i++)
+	{
+		d += abs(x[i] - y[i]);
+	}
+	return d;
+}
+
+int copyTriad(int* src, int* dest) {
+	if (NELEMS(src) != NELEMS(dest))
+	{
+		return 0;
+	}
+	for (int i = 0; i < (int) NELEMS(src); i++)
+	{
+		dest[i] = src[i];
+	}
+	return 1;
+}
+
+void sortTriad(int* x)
+{
+	// simple sort method for 3 integer array
+	if (x[1] > x[0])
+	{
+		// swap first two elements
+		swap(x, 0, 1);
+	}
+	if (x[2] > x[1])
+	{
+		// swap second two elements
+		swap(x, 1, 2);
+	}
+	if (x[1] > x[0])
+	{
+		// swap first two elements
+		swap(x, 0, 1);
+	}
+}
+
+void swap(int* x, int i, int j) {
+	int t;
+	t = x[i];
+	x[i] = x[j];
+	x[j] = t;
+}
+
+int inKey(int note)
+{
+	int offset = (note + 12) % 12;
 	for (int i = 0; i < SCALE_LENGTH; i++)
 	{
-		if (harmonizerScale > 1)
+		if (harmonizerScale > 0.5f)
 		{
-			if (offset == (minorOffsets[i] + harmonizerKey) % 12) return 1;
+			if (offset == ((minorOffsets[i] + harmonizerKey + 12) % 12)) return 1;
 		}
 		else
 		{
-			if (offset == (majorOffsets[i] + harmonizerKey) % 12) return 1;
+			if (offset == ((majorOffsets[i] + harmonizerKey + 12) % 12)) return 1;
 		}
 	}
 	return 0;

@@ -22,6 +22,7 @@ extern float noteperiod;
 
 extern int sungNote;
 extern int playedNote;
+extern int latchedNote;
 
 /* Params -------------------------------------------------------------------*/
 
