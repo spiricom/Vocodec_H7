@@ -80,7 +80,6 @@ int harmonizerKey = 0;
 int harmonizerScale = 0;
 int harmonizerComplexity = 0;
 int harmonizerHeat = 0;
-int harmonizerVoices = 3;
 InputMode harmonizerInputMode = Latch;
 
 // Delay
@@ -159,6 +158,7 @@ int inKey(int note);
 int calcDistance(int* x, int* y);
 int copyTriad(int* src, int* dest);
 void sortTriad(int* x);
+void sortTriadRelative(int* x);
 void swap(int* x, int i, int j);
 
 /****************************************************************************************/
@@ -502,10 +502,10 @@ int32_t SFXHarmonizeTick(int32_t input)
 	sample = tFormantShifterRemove(fs, sample * 2.0f);
 
 	// find limiting factor and set the number of voices accordingly
-	if (harmonizerComplexity < harmonizerVoices) {
+	if (harmonizerComplexity < numActiveVoices[HarmonizerMode]) {
 		voices = harmonizerComplexity;
 	} else {
-		voices = harmonizerVoices;
+		voices = numActiveVoices[HarmonizerMode];
 	}
 
 	for (int i = 0; i < voices; i++)
@@ -929,6 +929,9 @@ void voice(int* triad, int* bestTriad)
     {
     	copyTriad(triad, bestTriad);
     }
+
+    // sort from closest to farthest from sung note
+    sortTriadRelative(bestTriad);
 }
 
 int calcDistance(int* x, int* y)
@@ -957,20 +960,41 @@ int copyTriad(int* src, int* dest) {
 	return 1;
 }
 
+// TODO: parameterize the following two sort functions with comparator
 void sortTriad(int* x)
 {
 	// simple sort method for 3 integer array
-	if (x[1] > x[0])
+	if (x[0] > x[1])
 	{
 		// swap first two elements
 		swap(x, 0, 1);
 	}
-	if (x[2] > x[1])
+	if (x[1] > x[2])
 	{
 		// swap second two elements
 		swap(x, 1, 2);
 	}
-	if (x[1] > x[0])
+	if (x[0] > x[1])
+	{
+		// swap first two elements
+		swap(x, 0, 1);
+	}
+}
+
+void sortTriadRelative(int* x)
+{
+	// sort method for 3 integer array relative to given note
+	if (abs(x[0] - sungNote) > abs(x[1] - sungNote))
+	{
+		// swap first two elements
+		swap(x, 0, 1);
+	}
+	if (abs(x[1] - sungNote) > abs(x[2] - sungNote))
+	{
+		// swap second two elements
+		swap(x, 1, 2);
+	}
+	if (abs(x[0] - sungNote) > abs(x[1] - sungNote))
 	{
 		// swap first two elements
 		swap(x, 0, 1);
