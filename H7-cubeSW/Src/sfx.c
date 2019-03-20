@@ -882,10 +882,21 @@ void voice(int* triad, int* bestTriad)
     sortTriad(triad);
 
     distance = calcDistance(triad, lastTriad);
-    if (distance < bestDistance)
+    if (harmonizerHeat == 1)
     {
-        bestDistance = distance;
-        copyTriad(triad, bestTriad);
+		if (distance < bestDistance)
+		{
+			bestDistance = distance;
+			copyTriad(triad, bestTriad);
+		}
+    }
+    else
+    {
+    	if (distance > bestDistance)
+		{
+			bestDistance = distance;
+			copyTriad(triad, bestTriad);
+		}
     }
 
     // second inversion up
@@ -893,11 +904,22 @@ void voice(int* triad, int* bestTriad)
     sortTriad(triad);
 
     distance = calcDistance(triad, lastTriad);
-    if (distance < bestDistance)
-    {
-        bestDistance = distance;
-        copyTriad(triad, bestTriad);
-    }
+    if (harmonizerHeat == 1)
+	{
+		if (distance < bestDistance)
+		{
+			bestDistance = distance;
+			copyTriad(triad, bestTriad);
+		}
+	}
+	else
+	{
+		if (distance > bestDistance)
+		{
+			bestDistance = distance;
+			copyTriad(triad, bestTriad);
+		}
+	}
 
     // one octave positive transpose of original triad
     triad[0] = triad[0] + 12;
@@ -914,21 +936,42 @@ void voice(int* triad, int* bestTriad)
     sortTriad(triad);
 
     distance = calcDistance(triad, lastTriad);
-    if (distance < bestDistance)
-    {
-    	bestDistance = distance;
-    	copyTriad(triad, bestTriad);
-    }
+    if (harmonizerHeat == 1)
+	{
+		if (distance < bestDistance)
+		{
+			bestDistance = distance;
+			copyTriad(triad, bestTriad);
+		}
+	}
+	else
+	{
+		if (distance > bestDistance)
+		{
+			bestDistance = distance;
+			copyTriad(triad, bestTriad);
+		}
+	}
 
     // second inversion down
     triad[0] = triad[0] + 12;
     sortTriad(triad);
 
     distance = calcDistance(triad, lastTriad);
-    if (distance < bestDistance)
-    {
-    	copyTriad(triad, bestTriad);
-    }
+    if (harmonizerHeat == 1)
+	{
+		if (distance < bestDistance)
+		{
+			copyTriad(triad, bestTriad);
+		}
+	}
+	else
+	{
+		if (distance > bestDistance)
+		{
+			copyTriad(triad, bestTriad);
+		}
+	}
 
     // sort from closest to farthest from sung note
     sortTriadRelative(bestTriad);
@@ -998,6 +1041,11 @@ void sortTriadRelative(int* x)
 	{
 		// swap first two elements
 		swap(x, 0, 1);
+	}
+	if (abs(x[0] - sungNote) == 0)
+	{
+		// if the closest note is the same as the sung note, move to end
+		swap(x, 0, 2);
 	}
 }
 
