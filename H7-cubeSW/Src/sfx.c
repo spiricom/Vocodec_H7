@@ -79,6 +79,7 @@ int shouldVoice = 0;
 int harmonizerKey = 0;
 int harmonizerScale = 0;
 int harmonizerComplexity = 0;
+int oldHarmonizerComplexity = 0;
 int harmonizerHeat = 0;
 InputMode harmonizerInputMode = Latch;
 
@@ -498,17 +499,25 @@ int32_t SFXHarmonizeTick(int32_t input)
 		return (int32_t) (output * TWO_TO_31);
 	}
 
+	if (oldHarmonizerComplexity < harmonizerComplexity) {
+		// ramp in new voice and ramp other voices
+		tRampSetDest(ramp[harmonizerComplexity - 1], ramp[0]->dest);
+		for (int i = i; i < oldHarmonizerComplexity; i++) {
+			tRampSetDest(ramp[i], ramp[0]->dest);
+		}
+	} else if (oldHarmonizerComplexity > harmonizerComplexity) {
+		// ramp out old voice and ramp other voices
+		tRampSetDest(ramp[oldHarmonizerComplexity - 1], 0.0f);
+		for (int i = i; i < harmonizerComplexity; i++) {
+			tRampSetDest(ramp[i], ramp[0]->dest);
+		}
+	}
+	oldHarmonizerComplexity = harmonizerComplexity;
+
 	// pitch shifting
 	sample = tFormantShifterRemove(fs, sample * 2.0f);
 
-	// find limiting factor and set the number of voices accordingly
-	if (harmonizerComplexity < numActiveVoices[HarmonizerMode]) {
-		voices = harmonizerComplexity;
-	} else {
-		voices = numActiveVoices[HarmonizerMode];
-	}
-
-	for (int i = 0; i < voices; i++)
+	for (int i = 0; i < numActiveVoices[HarmonizerMode]; i++)
 	{
 		if (harmonizerInputMode == Latch)
 		{
@@ -516,11 +525,15 @@ int32_t SFXHarmonizeTick(int32_t input)
 		}
 		else
 		{
-			output += tPitchShift_shiftToFreq(pshift[i], OOPS_midiToFrequency(triad[i])) * tRampTick(ramp[0]);
+			output += tPitchShift_shiftToFreq(pshift[i], OOPS_midiToFrequency(triad[i])) * tRampTick(ramp[i]);
 		}
 	}
 
 	output = tFormantShifterAdd(fs, output, 0.0f) * 0.5f;
+
+	if (harmonizerComplexity > 0) {
+		output /= (float) harmonizerComplexity;
+	}
 
 	return (int32_t) (output * TWO_TO_31);
 }
@@ -772,6 +785,7 @@ int32_t SFXLevelTick(int32_t input)
 void SFXNoteOn(int key, int velocity)
 {
 	chordArray[key%12]++;
+
 	tMPoly_noteOn(mpoly, key, velocity);
 
 	for (int i = 0; i < mpoly->numVoices; i++)
@@ -789,9 +803,9 @@ void SFXNoteOff(int key, int velocity)
 	if (chordArray[key%12] > 0) chordArray[key%12]--;
 
 	int voice = tMPoly_noteOff(mpoly, key);
-
 	if (voice >= 0) tRampSetDest(ramp[voice], 0.0f);
-	for (int i = 0; i < tMPoly_getNumVoices(mpoly); i++)
+
+	for (int i = 0; i < mpoly->numVoices; i++)
 	{
 		if (tMPoly_isOn(mpoly, i) == 1)
 		{
