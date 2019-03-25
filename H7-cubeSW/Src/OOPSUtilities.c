@@ -1276,10 +1276,11 @@ int tMPoly_noteOn(tMPoly* poly, int note, uint8_t vel)
         		if (whichVoice >= 0)
         		{
         			poly->lastVoiceToChange = j;
-					int oldNote = poly->voices[whichVoice][0];
+					// int oldNote = poly->voices[whichVoice][0];
 					poly->voices[whichVoice][0] = note;
 					poly->voices[whichVoice][1] = vel;
-					poly->notes[oldNote][1] = -1; //mark the stolen voice as inactive (in the second dimension of the notes array)
+					// poly->notes[oldNote][1] = -1; //mark the stolen voice as inactive (in the second dimension of the notes array)
+					poly->notes[whichNote][1] = -1;
 					poly->notes[note][0] = vel;
 					poly->notes[note][1] = whichVoice;
                     
@@ -1303,8 +1304,8 @@ int tMPoly_noteOff(tMPoly* poly, uint8_t note)
 {
     tStack_remove(poly->stack, note);
     tStack_remove(poly->orderStack, note);
-    poly->notes[note][0] = 0;
-    poly->notes[note][1] = -1;
+    poly->notes[note][0] = 0; // reset velocity
+    poly->notes[note][1] = -1; // reset voice
     
     int deactivatedVoice = -1;
     for (int i = 0; i < poly->numVoices; i++)

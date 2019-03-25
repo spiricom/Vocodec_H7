@@ -210,7 +210,7 @@ void SFXInit(float sr, int blocksize)
 
 	for (int i = 0; i < MPOLY_NUM_MAX_VOICES; i++)
 	{
-		ramp[i] = tRampInit(10.0f, 1);
+		ramp[i] = tRampInit(100.0f, 1);
 	}
 
 	p = tPeriod_init(inBuffer, outBuffer[0], 2048, PS_FRAME_SIZE);
@@ -489,6 +489,9 @@ int32_t SFXHarmonizeTick(int32_t input)
 
 	sample = (float) (input * INV_TWO_TO_31);
 
+	// attenuate to simulate velocity
+	output += sample * 0.25;
+
 	freq = oops.sampleRate / tPeriod_findPeriod(p, sample);
 	sungNote = round(OOPS_frequencyToMidi(freq));
 
@@ -501,32 +504,30 @@ int32_t SFXHarmonizeTick(int32_t input)
 
 	if (oldHarmonizerComplexity < harmonizerComplexity) {
 		// ramp in new voice and ramp other voices
-		tRampSetDest(ramp[harmonizerComplexity - 1], ramp[0]->dest);
-		for (int i = i; i < oldHarmonizerComplexity; i++) {
-			tRampSetDest(ramp[i], ramp[0]->dest);
+		tRampSetDest(ramp[harmonizerComplexity], ramp[0]->dest);
+		for (int i = 0; i < oldHarmonizerComplexity; i++) {
+			tRampSetDest(ramp[i + 1], ramp[0]->dest);
 		}
 	} else if (oldHarmonizerComplexity > harmonizerComplexity) {
 		// ramp out old voice and ramp other voices
-		tRampSetDest(ramp[oldHarmonizerComplexity - 1], 0.0f);
-		for (int i = i; i < harmonizerComplexity; i++) {
-			tRampSetDest(ramp[i], ramp[0]->dest);
+		tRampSetDest(ramp[oldHarmonizerComplexity], 0.0f);
+		for (int i = 0; i < harmonizerComplexity; i++) {
+			tRampSetDest(ramp[i + 1], ramp[0]->dest);
 		}
 	}
 	oldHarmonizerComplexity = harmonizerComplexity;
 
+	// tick all ramps
+	for (int i = 0; i < 4; i++) {
+		tRampTick(ramp[i]);
+	}
+
 	// pitch shifting
 	sample = tFormantShifterRemove(fs, sample * 2.0f);
 
-	for (int i = 0; i < numActiveVoices[HarmonizerMode]; i++)
+	for (int i = 0; i < numActiveVoices[HarmonizerMode] && i < harmonizerComplexity; i++)
 	{
-		if (harmonizerInputMode == Latch)
-		{
-			output += tPitchShift_shiftToFreq(pshift[i], OOPS_midiToFrequency(triad[i]));
-		}
-		else
-		{
-			output += tPitchShift_shiftToFreq(pshift[i], OOPS_midiToFrequency(triad[i])) * tRampTick(ramp[i]);
-		}
+		output += tPitchShift_shiftToFreq(pshift[i], OOPS_midiToFrequency(triad[i])) * tRampSample(ramp[i + 1]);
 	}
 
 	output = tFormantShifterAdd(fs, output, 0.0f) * 0.5f;
