@@ -473,17 +473,24 @@ int32_t SFXHarmonizeTick(int32_t input)
 	mpolyMonoVel = tMPoly_getVelocity(mpoly, 0);
 
 	// set playedNote based on whether latching is turned on
-	if (harmonizerInputMode == Latch) {
-		if (mpolyMonoVel > 0) {
+	if (harmonizerInputMode == Latch)
+	{
+		if (mpolyMonoVel > 0)
+		{
 			latchedNote = mpolyMonoNote;
 		}
-	} else {
+	}
+	else
+	{
 		latchedNote = -1;
 	}
 
-	if (mpolyMonoVel > 0) {
+	if (mpolyMonoVel > 0)
+	{
 		playedNote = mpolyMonoNote;
-	} else {
+	}
+	else
+	{
 		playedNote = -1;
 	}
 
@@ -502,23 +509,27 @@ int32_t SFXHarmonizeTick(int32_t input)
 		return (int32_t) (output * TWO_TO_31);
 	}
 
-	if (oldHarmonizerComplexity < harmonizerComplexity) {
+	if (oldHarmonizerComplexity < harmonizerComplexity)
+	{
 		// ramp in new voice and ramp other voices
 		tRampSetDest(ramp[harmonizerComplexity], ramp[0]->dest);
-		for (int i = 0; i < oldHarmonizerComplexity; i++) {
-			tRampSetDest(ramp[i + 1], ramp[0]->dest);
-		}
-	} else if (oldHarmonizerComplexity > harmonizerComplexity) {
+	}
+	else if (oldHarmonizerComplexity > harmonizerComplexity)
+	{
 		// ramp out old voice and ramp other voices
 		tRampSetDest(ramp[oldHarmonizerComplexity], 0.0f);
-		for (int i = 0; i < harmonizerComplexity; i++) {
-			tRampSetDest(ramp[i + 1], ramp[0]->dest);
-		}
 	}
+
 	oldHarmonizerComplexity = harmonizerComplexity;
 
+	for (int i = 0; i < harmonizerComplexity; i++)
+	{
+		tRampSetDest(ramp[i + 1], ramp[0]->dest);
+	}
+
 	// tick all ramps
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < 4; i++)
+	{
 		tRampTick(ramp[i]);
 	}
 
