@@ -879,71 +879,81 @@ void SFXNoteOff(int key, int velocity)
 
 int harmonize(int* triad)
 {
-	int* offsets;
-	int computedNote;
+	if (harmonizeStep == 0)
+	{
+		// section 1
 
-	if (harmonizerInputMode == Latch)
-	{
-		computedNote = latchedNote;
-	}
-	else
-	{
-		computedNote = playedNote;
-	}
+		int* offsets;
+		int computedNote;
 
-	if (sungNote == -1 || computedNote == -1 || inKey(computedNote) == 0)
-	{
-		return 0;
-	}
-
-	if (harmonizerScale == 1)
-	{
-		offsets = minorOffsets;
-	}
-	else
-	{
-		offsets = majorOffsets;
-	}
-
-	int startIndex = -1;
-	for (int i = 0; i < SCALE_LENGTH; i++)
-	{
-		if ((computedNote % 12 - harmonizerKey + 12) % 12 == offsets[i])
+		if (harmonizerInputMode == Latch)
 		{
-			startIndex = i;
-			break;
-		}
-	}
-
-	int triadIndex = 0;
-	for (int i = startIndex; i < startIndex + 5; i += 2)
-	{
-		int noteOffset;
-		if (i < SCALE_LENGTH)
-		{
-			noteOffset = offsets[i];
+			computedNote = latchedNote;
 		}
 		else
 		{
-			noteOffset = offsets[i % SCALE_LENGTH] + 12;
+			computedNote = playedNote;
 		}
-		triad[triadIndex] = noteOffset + sungNote - ((sungNote - harmonizerKey) % 12);
-		triadIndex++;
+
+		if (sungNote == -1 || computedNote == -1 || inKey(computedNote) == 0)
+		{
+			return 0;
+		}
+
+		if (harmonizerScale == 1)
+		{
+			offsets = minorOffsets;
+		}
+		else
+		{
+			offsets = majorOffsets;
+		}
+
+		int startIndex = -1;
+		for (int i = 0; i < SCALE_LENGTH; i++)
+		{
+			if ((computedNote % 12 - harmonizerKey + 12) % 12 == offsets[i])
+			{
+				startIndex = i;
+				break;
+			}
+		}
+
+		int triadIndex = 0;
+		for (int i = startIndex; i < startIndex + 5; i += 2)
+		{
+			int noteOffset;
+			if (i < SCALE_LENGTH)
+			{
+				noteOffset = offsets[i];
+			}
+			else
+			{
+				noteOffset = offsets[i % SCALE_LENGTH] + 12;
+			}
+			triad[triadIndex] = noteOffset + sungNote - ((sungNote - harmonizerKey) % 12);
+			triadIndex++;
+		}
+		return 0;
 	}
+	else
+	{
+		// section 2
 
-	// copy triad to be rearranged and evaluated
-	int evalTriad[3];
-	copyTriad(triad, evalTriad);
+		// copy triad to be rearranged and evaluated
+		int evalTriad[3];
+		copyTriad(triad, evalTriad);
 
-	// triad ends up with best voicing
-	if (shouldVoice == 1) voice(evalTriad, triad);
+		// triad ends up with best voicing
+		if (shouldVoice == 1) voice(evalTriad, triad);
 
-	// preserve voiced triad in lastTriad
-	copyTriad(triad, lastTriad);
-	// always voice after triad has been voiced
-	shouldVoice = 1;
+		// preserve voiced triad in lastTriad
+		copyTriad(triad, lastTriad);
+		// always voice after triad has been voiced
+		shouldVoice = 1;
 
-	return 1;
+		return 1;
+	}
 }
 
 void voice(int* triad, int* bestTriad)
