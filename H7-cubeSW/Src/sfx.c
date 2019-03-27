@@ -72,8 +72,12 @@ float glideTimeAuto = 5.0f;
 
 // Harmonizer
 int sungNote = -1;
+int prevSungNote = -1;
 int playedNote = -1;
+int prevPlayedNote = -1;
 int latchedNote = -1;
+int triad[3];
+int tempTriad[3];
 int lastTriad[3];
 int shouldVoice = 0;
 int harmonizerKey = 0;
@@ -82,6 +86,8 @@ int harmonizerComplexity = 0;
 int oldHarmonizerComplexity = 0;
 int harmonizerHeat = 0;
 InputMode harmonizerInputMode = Latch;
+int harmonizeStep = -1;
+int harmonizerSuccess = 0;
 
 // Delay
 float hpFreqDel = 20.0f;
@@ -155,6 +161,7 @@ float interpolateFeedback(float raw_data);
 float ksTick(float noise_in);
 void calculateFreq(int voice);
 int harmonize(int* triad);
+void voice(int* triad, int* bestTriad);
 int inKey(int note);
 int calcDistance(int* x, int* y);
 int copyTriad(int* src, int* dest);
@@ -456,6 +463,25 @@ void SFXHarmonizeFrame()
 	__KNOBCHECK2__ { harmonizerScale = (int) floor(knobVals[1] + 0.5f); }
 	__KNOBCHECK3__ { harmonizerComplexity = (int) floor(knobVals[2] * 3.0f + 0.5f); }
 	__KNOBCHECK4__ { harmonizerHeat = (int) floor(knobVals[3] * 3.0f + 0.5f); }
+
+	if (prevSungNote != sungNote || prevPlayedNote != playedNote)
+	{
+		harmonizeStep = 0;
+	}
+
+	// step through computation
+	if (harmonizeStep != -1) {
+		harmonizerSuccess = harmonize(tempTriad);
+		if (harmonizerSuccess == 1)
+		{
+			copyTriad(tempTriad, triad);
+			harmonizeStep = -1;
+		}
+		else
+		{
+			harmonizeStep++;
+		}
+	}
 }
 int32_t SFXHarmonizeTick(int32_t input)
 {
@@ -464,8 +490,6 @@ int32_t SFXHarmonizeTick(int32_t input)
 	float freq;
 	int mpolyMonoNote = -1;
 	int mpolyMonoVel = -1;
-	int triad[3];
-	int voices;
 
 	// get mono pitch
 	tMPoly_tick(mpoly);
@@ -502,9 +526,7 @@ int32_t SFXHarmonizeTick(int32_t input)
 	freq = oops.sampleRate / tPeriod_findPeriod(p, sample);
 	sungNote = round(OOPS_frequencyToMidi(freq));
 
-	int success = harmonize(triad);
-
-	if (success == 0)
+	if (harmonizerSuccess == 0)
 	{
 		return (int32_t) (output * TWO_TO_31);
 	}
@@ -952,7 +974,7 @@ void voice(int* triad, int* bestTriad)
     sortTriad(triad);
 
     // transpose two octaves down
-    for (int i = 0; i < NELEMS(triad); i++)
+    for (int i = 0; i < (int) NELEMS(triad); i++)
     {
     	triad[i] = triad[i] - 24;
     }
