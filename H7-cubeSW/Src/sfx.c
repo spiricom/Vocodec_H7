@@ -76,18 +76,24 @@ int prevSungNote = -1;
 int playedNote = -1;
 int prevPlayedNote = -1;
 int latchedNote = -1;
+int prevPitchDetectedNote = -1;
+int pitchDetectedSeq = 0;
+
 int triad[3];
 int tempTriad[3];
 int lastTriad[3];
 int shouldVoice = 0;
+
 int harmonizerKey = 0;
 int harmonizerScale = 0;
 int harmonizerComplexity = 0;
 int oldHarmonizerComplexity = 0;
 int harmonizerHeat = 0;
-InputMode harmonizerInputMode = Latch;
+
 int harmonizeStep = -1;
 int harmonizerSuccess = 0;
+
+InputMode harmonizerInputMode = Latch;
 
 // Delay
 float hpFreqDel = 20.0f;
@@ -524,7 +530,27 @@ int32_t SFXHarmonizeTick(int32_t input)
 	output += sample * 0.25;
 
 	freq = oops.sampleRate / tPeriod_findPeriod(p, sample);
-	sungNote = round(OOPS_frequencyToMidi(freq));
+
+	// sungNote smoothing
+	int pitchDetectedNote = round(OOPS_frequencyToMidi(freq));
+	if (pitchDetectedNote != sungNote)
+	{
+		if (pitchDetectedNote == prevPitchDetectedNote)
+		{
+			pitchDetectedSeq++;
+
+			// wait for # of same pitchDetected notes in a row, then change
+			if (pitchDetectedSeq > 64)
+			{
+				sungNote = pitchDetectedNote;
+			}
+		}
+		else
+		{
+			pitchDetectedSeq = 0;
+			prevPitchDetectedNote = pitchDetectedNote;
+		}
+	}
 
 	if (harmonizerSuccess == 0)
 	{
