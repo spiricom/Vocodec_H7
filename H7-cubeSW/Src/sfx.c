@@ -92,6 +92,7 @@ int harmonizerHeat = 0;
 
 int harmonizeStep = -1;
 int harmonizerSuccess = 0;
+int computedFirst = 0;
 
 InputMode harmonizerInputMode = Latch;
 
@@ -470,7 +471,7 @@ void SFXHarmonizeFrame()
 	__KNOBCHECK3__ { harmonizerComplexity = (int) floor(knobVals[2] * 3.0f + 0.5f); }
 	__KNOBCHECK4__ { harmonizerHeat = (int) floor(knobVals[3] * 3.0f + 0.5f); }
 
-	if (prevSungNote != sungNote || prevPlayedNote != playedNote)
+	if ((prevSungNote != sungNote || prevPlayedNote != playedNote) && harmonizeStep == -1)
 	{
 		harmonizeStep = 0;
 	}
@@ -480,7 +481,10 @@ void SFXHarmonizeFrame()
 		harmonizerSuccess = harmonize(tempTriad);
 		if (harmonizerSuccess == 1)
 		{
+			computedFirst = 1;
 			copyTriad(tempTriad, triad);
+			prevSungNote = sungNote;
+			prevPlayedNote = playedNote;
 			harmonizeStep = -1;
 		}
 		else
@@ -496,6 +500,7 @@ int32_t SFXHarmonizeTick(int32_t input)
 	float freq;
 	int mpolyMonoNote = -1;
 	int mpolyMonoVel = -1;
+	int voices;
 
 	// get mono pitch
 	tMPoly_tick(mpoly);
@@ -540,9 +545,12 @@ int32_t SFXHarmonizeTick(int32_t input)
 			pitchDetectedSeq++;
 
 			// wait for # of same pitchDetected notes in a row, then change
-			if (pitchDetectedSeq > 64)
+			if (pitchDetectedSeq > 2048)
 			{
-				sungNote = pitchDetectedNote;
+				if (pitchDetectedNote <= 127 && pitchDetectedNote >= 0)
+				{
+					sungNote = pitchDetectedNote;
+				}
 			}
 		}
 		else
@@ -552,7 +560,7 @@ int32_t SFXHarmonizeTick(int32_t input)
 		}
 	}
 
-	if (harmonizerSuccess == 0)
+	if (computedFirst == 0)
 	{
 		return (int32_t) (output * TWO_TO_31);
 	}
@@ -584,7 +592,13 @@ int32_t SFXHarmonizeTick(int32_t input)
 	// pitch shifting
 	sample = tFormantShifterRemove(fs, sample * 2.0f);
 
-	for (int i = 0; i < numActiveVoices[HarmonizerMode] && i < harmonizerComplexity; i++)
+	if (numActiveVoices[HarmonizerMode] < harmonizerComplexity) {
+		voices = numActiveVoices[HarmonizerMode];
+	} else {
+		voices = harmonizerComplexity;
+	}
+
+	for (int i = 0; i < voices; i++)
 	{
 		output += tPitchShift_shiftToFreq(pshift[i], OOPS_midiToFrequency(triad[i])) * tRampSample(ramp[i + 1]);
 	}
