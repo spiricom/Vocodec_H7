@@ -2,7 +2,6 @@
 #include "sfx.h"
 #include "main.h"
 #include "codec.h"
-#include "OOPSWavetables.h"
 
 #define NUM_FB_DELAY_TABLES 8
 #define SCALE_LENGTH 7
@@ -193,8 +192,8 @@ void SFXInit(float sr, int blocksize)
 		formantCorrect[i] = 0;
 	}
 
-	// Initialize the audio library. OOPS.
-	OOPSInit(sr, blocksize, &randomNumber);
+	// Initialize the audio library. LEAF.
+	LEAF_Init(sr, blocksize, &randomNumber);
 
 	sin1 = tCycleInit();
 	noise1 = tNoiseInit(PinkNoise);
@@ -209,12 +208,12 @@ void SFXInit(float sr, int blocksize)
 
 	for (int i = 0; i < 128; i++)
 	{
-		notePeriods[i] = 1.0f / OOPS_midiToFrequency(i) * oops.sampleRate;
+		notePeriods[i] = 1.0f / LEAF_midiToFrequency(i) * leaf.sampleRate;
 	}
 
 	fs = tFormantShifterInit();
 
-	mpoly = tMPoly_init(MPOLY_NUM_MAX_VOICES);
+	tMPoly_init(&mpoly, MPOLY_NUM_MAX_VOICES);
 	tMPoly_setPitchGlideTime(mpoly, 50.0f);
 	numActiveVoices[VocoderMode] = 1;
 	numActiveVoices[AutotuneAbsoluteMode] = 1;
@@ -235,14 +234,14 @@ void SFXInit(float sr, int blocksize)
 		ramp[i] = tRampInit(100.0f, 1);
 	}
 
-	p = tPeriod_init(inBuffer, outBuffer[0], 2048, PS_FRAME_SIZE);
+	tPeriod_init(&p, inBuffer, outBuffer[0], 2048, PS_FRAME_SIZE);
 	tPeriod_setWindowSize(p, ENV_WINDOW_SIZE);
 	tPeriod_setHopSize(p, ENV_HOP_SIZE);
 
 	/* Initialize devices for pitch shifting */
 	for (int i = 0; i < NUM_SHIFTERS; ++i)
 	{
-		pshift[i] = tPitchShift_init(p, outBuffer[i], 2048);
+		tPitchShift_init(&pshift[i], p, outBuffer[i], 2048);
 	}
 
 	lowpassVoc = tSVFInit(SVFTypeLowpass, 20000.0f, 1.0f);
@@ -285,7 +284,7 @@ void SFXInit(float sr, int blocksize)
 	knobValsPerMode[BitcrusherMode][2] = rateRatio / 128.0f;
 	knobValsPerMode[BitcrusherMode][3] = bitDepth / 16.0f;
 
-	knobValsPerMode[DrumboxMode][1] = newFreqDB * newDelayDB / (4.0f * oops.sampleRate);
+	knobValsPerMode[DrumboxMode][1] = newFreqDB * newDelayDB / (4.0f * leaf.sampleRate);
 
 	knobValsPerMode[SynthMode][0] = (glideTimeSynth - 5.0f) / 999.0f;
 	knobValsPerMode[SynthMode][1] = synthGain;
@@ -542,10 +541,10 @@ int32_t SFXHarmonizeTick(int32_t input)
 	// attenuate to simulate velocity
 	output += sample * 0.25;
 
-	freq = oops.sampleRate / tPeriod_findPeriod(p, sample);
+	freq = leaf.sampleRate / tPeriod_findPeriod(p, sample);
 
 	// sungNote smoothing
-	int pitchDetectedNote = round(OOPS_frequencyToMidi(freq));
+	int pitchDetectedNote = round(LEAF_frequencyToMidi(freq));
 	if (pitchDetectedNote != sungNote)
 	{
 		if (pitchDetectedNote == prevPitchDetectedNote)
@@ -617,7 +616,7 @@ int32_t SFXHarmonizeTick(int32_t input)
 
 	for (int i = 0; i < voices; i++)
 	{
-		output += tPitchShift_shiftToFreq(pshift[i], OOPS_midiToFrequency(triad[i])) * tRampSample(ramp[i + 1]);
+		output += tPitchShift_shiftToFreq(pshift[i], LEAF_midiToFrequency(triad[i])) * tRampSample(ramp[i + 1]);
 	}
 
 	output = tFormantShifterAdd(fs, output, 0.0f) * 0.5f;
@@ -758,7 +757,7 @@ void SFXDrumboxFrame()
 	if (modeChain[chainIndex] == DrumboxMode)
 	{
 		__KNOBCHECK1__ { decayCoeff = knobVals[0] * 2000; }
-		__KNOBCHECK2__ { newFreqDB =  ((knobVals[1]) * 4.0f) * ((1.0f / newDelayDB) * oops.sampleRate); }
+		__KNOBCHECK2__ { newFreqDB =  ((knobVals[1]) * 4.0f) * ((1.0f / newDelayDB) * leaf.sampleRate); }
 		__KNOBCHECK3__ { newDelayDB = interpolateDelayControl(1.0f - knobVals[2]); }
 		__KNOBCHECK4__ { newFeedbackDB = interpolateFeedback(knobVals[3]); }
 	}
@@ -782,14 +781,14 @@ int32_t SFXDrumboxTick(int32_t input)
 	tDelayLSetDelay(delay, tRampTick(rampDelayFreq));
 
 	sample = ((ksTick(audioIn) * 0.7f) + audioIn * 0.8f);
-	float tempSinSample = OOPS_shaper(((tCycleTick(sin1) * tEnvelopeFollowerTick(envFollowSine, audioIn)) * 0.6f), 0.5f);
+	float tempSinSample = LEAF_shaper(((tCycleTick(sin1) * tEnvelopeFollowerTick(envFollowSine, audioIn)) * 0.6f), 0.5f);
 	sample += tempSinSample * 0.6f;
 	sample += (tNoiseTick(noise1) * tEnvelopeFollowerTick(envFollowNoise, audioIn));
 
 	sample *= gainBoost;
 
 	sample = tHighpassTick(highpass1, sample);
-	sample = OOPS_shaper(sample * 0.6, 1.0f);
+	sample = LEAF_shaper(sample * 0.6, 1.0f);
 
 	return (int32_t) (sample * TWO_TO_31);
 }
@@ -1194,7 +1193,7 @@ void calculateFreq(int voice)
 	float tempNote = tMPoly_getPitch(mpoly, voice);
 	float tempPitchClass = ((((int)tempNote) - keyCenter) % 12 );
 	float tunedNote = tempNote + centsDeviation[(int)tempPitchClass];
-	freq[voice] = OOPS_midiToFrequency(tunedNote);
+	freq[voice] = LEAF_midiToFrequency(tunedNote);
 }
 
 float nearestPeriod(float period)
@@ -1235,7 +1234,7 @@ float ksTick(float noise_in)
 	m_input1 = dbFeedbackSamp;
 	dbFeedbackSamp = m_output0;
 	temp_sample = (tHighpassTick(highpass2, dbFeedbackSamp)) * 0.5f;
-	temp_sample = OOPS_shaper(temp_sample, 1.5f);
+	temp_sample = LEAF_shaper(temp_sample, 1.5f);
 
 	return temp_sample;
 }

@@ -2,6 +2,7 @@
 #include "audiostream.h"
 #include "main.h"
 #include "codec.h"
+#include "sfx.h"
 
 // align is to make sure they are lined up with the data boundaries of the cache
 // at(0x3....) is to put them in the D2 domain of SRAM where the DMA can access them

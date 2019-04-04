@@ -9,7 +9,6 @@
 #define __SFX_H_
 
 /* Includes ------------------------------------------------------------------*/
-#include "OOPS.h"
 #include "stm32h7xx_hal.h"
 #include "audiostream.h"
 #include "ui.h"
