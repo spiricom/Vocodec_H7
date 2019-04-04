@@ -71,11 +71,18 @@ float formantShiftFactorPS = 0.0f;
 float glideTimeAuto = 5.0f;
 
 // Harmonizer
+typedef enum Direction {
+	NONE = 0,
+	UP,
+	DOWN
+} Direction;
+
 int sungNote = -1;
 int prevSungNote = -1;
 int playedNote = -1;
 int prevPlayedNote = -1;
 int latchedNote = -1;
+
 int prevPitchDetectedNote = -1;
 int pitchDetectedSeq = 0;
 
@@ -83,6 +90,7 @@ int triad[3];
 int tempTriad[3];
 int lastTriad[3];
 int shouldVoice = 0;
+Direction voiceDirection = NONE;
 
 int harmonizerKey = 0;
 int harmonizerScale = 0;
@@ -545,11 +553,20 @@ int32_t SFXHarmonizeTick(int32_t input)
 			pitchDetectedSeq++;
 
 			// wait for # of same pitchDetected notes in a row, then change
-			if (pitchDetectedSeq > 2048)
+			if (pitchDetectedSeq > 4096)
 			{
 				if (pitchDetectedNote <= 127 && pitchDetectedNote >= 0)
 				{
 					sungNote = pitchDetectedNote;
+
+					// voice direction
+					if (pitchDetectedNote > prevPitchDetectedNote) {
+						voiceDirection = UP;
+					} else if (pitchDetectedNote > prevPitchDetectedNote) {
+						voiceDirection = DOWN;
+					} else {
+						voiceDirection = NONE;
+					}
 				}
 			}
 		}
@@ -1001,23 +1018,23 @@ void voice(int* triad, int* bestTriad)
     triad[0] = triad[0] + 12;
     sortTriad(triad);
 
-    distance = calcDistance(triad, lastTriad);
-    if (harmonizerHeat == 1)
-	{
-		if (distance < bestDistance)
-		{
-			bestDistance = distance;
-			copyTriad(triad, bestTriad);
-		}
-	}
-	else
-	{
-		if (distance > bestDistance)
-		{
-			bestDistance = distance;
-			copyTriad(triad, bestTriad);
-		}
-	}
+//    distance = calcDistance(triad, lastTriad);
+//    if (harmonizerHeat == 1)
+//	{
+//		if (distance < bestDistance)
+//		{
+//			bestDistance = distance;
+//			copyTriad(triad, bestTriad);
+//		}
+//	}
+//	else
+//	{
+//		if (distance > bestDistance)
+//		{
+//			bestDistance = distance;
+//			copyTriad(triad, bestTriad);
+//		}
+//	}
 
     // one octave positive transpose of original triad
     triad[0] = triad[0] + 12;
@@ -1033,23 +1050,23 @@ void voice(int* triad, int* bestTriad)
     triad[0] = triad[0] + 12;
     sortTriad(triad);
 
-    distance = calcDistance(triad, lastTriad);
-    if (harmonizerHeat == 1)
-	{
-		if (distance < bestDistance)
-		{
-			bestDistance = distance;
-			copyTriad(triad, bestTriad);
-		}
-	}
-	else
-	{
-		if (distance > bestDistance)
-		{
-			bestDistance = distance;
-			copyTriad(triad, bestTriad);
-		}
-	}
+//    distance = calcDistance(triad, lastTriad);
+//    if (harmonizerHeat == 1)
+//	{
+//		if (distance < bestDistance)
+//		{
+//			bestDistance = distance;
+//			copyTriad(triad, bestTriad);
+//		}
+//	}
+//	else
+//	{
+//		if (distance > bestDistance)
+//		{
+//			bestDistance = distance;
+//			copyTriad(triad, bestTriad);
+//		}
+//	}
 
     // second inversion down
     triad[0] = triad[0] + 12;
