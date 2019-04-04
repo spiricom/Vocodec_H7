@@ -16,14 +16,14 @@
   *
   *        http://www.st.com/software_license_agreement_liberty_v2
   *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   * See the License for the specific language governing permissions and
   * limitations under the License.
   *
   ******************************************************************************
-  */   
+  */
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __AUDIOSTREAM_H
 #define __AUDIOSTREAM_H
@@ -59,9 +59,9 @@ void ctrlInput(int ctrl, int value);
 /* Exported types ------------------------------------------------------------*/
 typedef enum
 {
-  BUFFER_OFFSET_NONE = 0,  
-  BUFFER_OFFSET_HALF,  
-  BUFFER_OFFSET_FULL,     
+  BUFFER_OFFSET_NONE = 0,
+  BUFFER_OFFSET_HALF,
+  BUFFER_OFFSET_FULL,
 }BUFFER_StateTypeDef;
 
 void slideValueChanged(uint16_t value);
@@ -104,7 +104,7 @@ extern float mPerVal;
 #define SAMPLE_RATE 48000.f
 #endif
 
-#define INV_SAMPLE_RATE 1.f/SAMPLE_RATE 
+#define INV_SAMPLE_RATE 1.f/SAMPLE_RATE
 #define SAMPLE_RATE_MS (SAMPLE_RATE / 1000.f)
 #define INV_SR_MS 1.f/SAMPLE_RATE_MS
 #define SAMPLE_RATE_DIV_PARAMS SAMPLE_RATE / 3

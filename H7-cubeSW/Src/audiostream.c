@@ -3,7 +3,7 @@
 #include "main.h"
 #include "codec.h"
 
-// align is to make sure they are lined up with the data boundaries of the cache 
+// align is to make sure they are lined up with the data boundaries of the cache
 // at(0x3....) is to put them in the D2 domain of SRAM where the DMA can access them
 // (otherwise the TX times out because the DMA can't see the data location) -JS
 
@@ -12,14 +12,14 @@
 int32_t audioOutBuffer[AUDIO_BUFFER_SIZE] __ATTR_RAM_D2;
 int32_t audioInBuffer[AUDIO_BUFFER_SIZE] __ATTR_RAM_D2;
 
-float audioTickL(float audioIn); 
+float audioTickL(float audioIn);
 float audioTickR(float audioIn);
 
 HAL_StatusTypeDef transmit_status;
 HAL_StatusTypeDef receive_status;
 
-void (*frameFunctions[ModeCount])(void);
-int32_t  (*tickFunctions[ModeCount])(int32_t);
+void (*frameFunctions[ModeCount - 1])(void);
+int32_t  (*tickFunctions[ModeCount - 1])(int32_t);
 VocodecMode audioChain[3];
 
 static void initFunctionPointers(void);
@@ -112,27 +112,17 @@ void ctrlInput(int ctrl, int value)
 
 }
 
-tDattorro reverb;
-
-tSawtooth saw;
-tEnvelope env;
-
 void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTypeDef* hsaiIn, RNG_HandleTypeDef* hrand)
 {
 	// Initialize LEAF.
 	LEAF_init(SAMPLE_RATE, AUDIO_FRAME_SIZE, &randomNumber);
 
-	tDattorro_init(&reverb);
-
-	tSawtooth_init(&saw);
-	tSawtooth_setFreq(&saw, 110.0f);
-
-	tEnvelope_init(&env, 3.0f, 500.0f, OFALSE);
-
 	//now to send all the necessary messages to the codec
 	AudioCodec_init(hi2c);
 
 	HAL_Delay(100);
+
+	initFunctionPointers();
 
 	for (int i = 0; i < AUDIO_BUFFER_SIZE; i++)
 	{
@@ -147,46 +137,98 @@ void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTy
 
 int numSamples = AUDIO_FRAME_SIZE;
 
-int timer = 0;
-
-
-
-#define CLICK 0
-
-float sample;
-
-static float tick(float in)
-{
-	sample = in;
-
-#if CLICK
-	if (++timer >= leaf.sampleRate)
-	{
-		timer = 0;
-		//sample = 1.0f;
-		tEnvelope_on(&env, 0.5f);
-	}
-	sample = tEnvelope_tick(&env) * tSawtooth_tick(&saw);
-#endif
-
-	return tDattorro_tick(&reverb, sample);
-}
-
-
 void audioFrame(uint16_t buffer_offset)
 {
-	int i;
-	int32_t current_sample = 0;
+	int sample = 0;
 
-	for (i = 0; i < (HALF_BUFFER_SIZE); i++)
+	if (indexChained[chainIndex] == 0)
 	{
-		if ((i & 1) == 0)
+		if (modeChain[chainIndex] != ModeNil)
 		{
-			current_sample = (int32_t)(tick((float) (audioInBuffer[buffer_offset + i] * INV_TWO_TO_31)) * TWO_TO_31);
+			frameFunctions[modeChain[chainIndex]]();
 		}
-
-		audioOutBuffer[buffer_offset + i] = current_sample;
+		for (int cc=0; cc < numSamples; cc++)
+		{
+			for (int i = 0; i < NUM_KNOBS; i++)
+			{
+				knobVals[i] = tRampTick(knobRamps[i]);
+			}
+			sample = (int) (audioInBuffer[buffer_offset+(cc*2)] * inputLevel);
+			if (modeChain[chainIndex] != ModeNil)
+			{
+				sample = tickFunctions[modeChain[chainIndex]](sample);
+			}
+			audioOutBuffer[buffer_offset + (cc*2)] = (int) (sample * outputLevel);
+		}
 	}
+	else if (indexChained[chainIndex] > 0)
+	{
+		for (int i = 0; i < CHAIN_LENGTH; i++)
+		{
+			if (modeChain[i] != ModeNil && indexChained[i] > 0)
+			{
+				frameFunctions[modeChain[i]]();
+			}
+		}
+		for (int cc=0; cc < numSamples; cc++)
+		{
+			for (int i = 0; i < NUM_KNOBS; i++)
+			{
+				knobVals[i] = tRampTick(knobRamps[i]);
+			}
+			sample = (int) (audioInBuffer[buffer_offset+(cc*2)] * inputLevel);
+			for (int i = 0; i < CHAIN_LENGTH; i++)
+			{
+				if (modeChain[i] != ModeNil && indexChained[i] > 0)
+				{
+					sample = tickFunctions[modeChain[i]](sample);
+				}
+			}
+			audioOutBuffer[buffer_offset + (cc*2)] = (int) (sample * outputLevel);
+		}
+	}
+}
+
+static void initFunctionPointers(void)
+{
+	frameFunctions[VocoderMode] = SFXVocoderFrame;
+	tickFunctions[VocoderMode] = SFXVocoderTick;
+
+	frameFunctions[FormantShiftMode] = SFXFormantFrame;
+	tickFunctions[FormantShiftMode] = SFXFormantTick;
+
+	frameFunctions[PitchShiftMode] = SFXPitchShiftFrame;
+	tickFunctions[PitchShiftMode] = SFXPitchShiftTick;
+
+	frameFunctions[AutotuneNearestMode] = SFXAutotuneNearestFrame;
+	tickFunctions[AutotuneNearestMode] = SFXAutotuneNearestTick;
+
+	frameFunctions[AutotuneAbsoluteMode] = SFXAutotuneAbsoluteFrame;
+	tickFunctions[AutotuneAbsoluteMode] = SFXAutotuneAbsoluteTick;
+
+	frameFunctions[HarmonizerMode] = SFXHarmonizeFrame;
+	tickFunctions[HarmonizerMode] = SFXHarmonizeTick;
+
+	frameFunctions[DelayMode] = SFXDelayFrame;
+	tickFunctions[DelayMode] = SFXDelayTick;
+
+	frameFunctions[ReverbMode] = SFXReverbFrame;
+	tickFunctions[ReverbMode] = SFXReverbTick;
+
+	frameFunctions[BitcrusherMode] = SFXBitcrusherFrame;
+	tickFunctions[BitcrusherMode] = SFXBitcrusherTick;
+
+	frameFunctions[DrumboxMode] = SFXDrumboxFrame;
+	tickFunctions[DrumboxMode] = SFXDrumboxTick;
+
+	frameFunctions[SynthMode] = SFXSynthFrame;
+	tickFunctions[SynthMode] = SFXSynthTick;
+
+	frameFunctions[DrawMode] = SFXDrawFrame;
+	tickFunctions[DrawMode] = SFXDrawTick;
+
+	frameFunctions[LevelMode] = SFXLevelFrame;
+	tickFunctions[LevelMode] = SFXLevelTick;
 }
 
 void HAL_SAI_ErrorCallback(SAI_HandleTypeDef *hsai)

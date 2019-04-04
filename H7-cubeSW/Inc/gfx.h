@@ -115,4 +115,5 @@ int OLEDparsePitch(uint8_t* buffer, float midi);
 
 int OLEDparseFixedFloat(uint8_t* buffer, float input, uint8_t numDigits, uint8_t numDecimal);
 
+
 #endif /* GFX_H_ */
