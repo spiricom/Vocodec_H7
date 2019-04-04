@@ -99,19 +99,6 @@ int pinValue = 0;
 uint8_t ball[]  = {0x00, 0x3C, 0x7E, 0x7E, 0x7E, 0x7E, 0x3C, 0x00};
 static unsigned char testblock[] = {0x00, 0x7C, 0x7E, 0x0B, 0x0B, 0x7E, 0x7C, 0x00};
 
-char* formantEmojis[9] =
-{
-	":O        ",
-	" :0       ",
-	"  :o      ",
-	"   :o     ",
-	"    :*    ",
-	"     :|   ",
-	"      :|  ",
-	"       :) ",
-	"        :D"
-};
-
 char info[12];
 
 /* USER CODE END PV */

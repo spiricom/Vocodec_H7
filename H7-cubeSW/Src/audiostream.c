@@ -152,7 +152,7 @@ void audioFrame(uint16_t buffer_offset)
 		{
 			for (int i = 0; i < NUM_KNOBS; i++)
 			{
-				knobVals[i] = tRampTick(knobRamps[i]);
+				knobVals[i] = tRamp_tick(knobRamps[i]);
 			}
 			sample = (int) (audioInBuffer[buffer_offset+(cc*2)] * inputLevel);
 			if (modeChain[chainIndex] != ModeNil)
@@ -175,7 +175,7 @@ void audioFrame(uint16_t buffer_offset)
 		{
 			for (int i = 0; i < NUM_KNOBS; i++)
 			{
-				knobVals[i] = tRampTick(knobRamps[i]);
+				knobVals[i] = tRamp_tick(knobRamps[i]);
 			}
 			sample = (int) (audioInBuffer[buffer_offset+(cc*2)] * inputLevel);
 			for (int i = 0; i < CHAIN_LENGTH; i++)

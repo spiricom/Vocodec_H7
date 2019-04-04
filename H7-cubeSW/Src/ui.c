@@ -3,6 +3,7 @@
 #include "audiostream.h"
 #include "gfx.h"
 #include "ui.h"
+#include "sfx.h"
 
 GFX theGFX;
 char oled_buffer[32];
@@ -111,7 +112,7 @@ void UIInit(uint16_t* myADCArray)
 
 	for(int i = 0; i < NUM_KNOBS; i++)
 	{
-		knobRamps[i] = tRampInit(100.0f, 1);
+		tRamp_init(knobRamps[i], 100.0f, 1);
 
 		val = (int) (adcVals[(NUM_KNOBS-1)-i] * 0.00390625f);
 		lastval[i] = val;
@@ -119,8 +120,8 @@ void UIInit(uint16_t* myADCArray)
 		if (val < 0.025f) val = 0.025;
 		else if (val > 0.975f) val = 0.975f;
 		val = (val - 0.025f) / 0.95f;
-		tRampSetDest(knobRamps[i], val);
-		tRampSetVal(knobRamps[i], val);
+		tRamp_setDest(knobRamps[i], val);
+		tRamp_setVal(knobRamps[i], val);
 		knobVals[i] = val;
 	}
 	initKnobs();
@@ -189,7 +190,7 @@ void processKnobs(void)
 			if (val < 0.025f) val = 0.025;
 			else if (val > 0.975f) val = 0.975f;
 			val = (val - 0.025f) / 0.95f;
-			tRampSetDest(knobRamps[i], val);
+			tRamp_setDest(knobRamps[i], val);
 		}
 	}
 }
@@ -345,7 +346,7 @@ void displayScreen(void)
 			//display knob values if they correspond to a parameter
 			if(lastKnob == 0) OLEDwriteKRangeFixedFloat(hpFreqDel, 4, 1, 64, SecondLine);
 			else if(lastKnob == 1) OLEDwriteKRangeFixedFloat(lpFreqDel, 4, 1, 64, SecondLine);
-			else if(lastKnob == 2) OLEDwriteFixedFloat(newDelay*oops.invSampleRate, 4, 3, 64, SecondLine);
+			else if(lastKnob == 2) OLEDwriteFixedFloat(newDelay*leaf.invSampleRate, 4, 3, 64, SecondLine);
 			else if(lastKnob == 3) OLEDwriteFixedFloat(newFeedback, 4, 2, 64, SecondLine);
 			/*
 			OLEDwriteFixedFloat(newDelay*oops.invSampleRate, 4, 3, 4, SecondLine);
@@ -374,7 +375,7 @@ void displayScreen(void)
 			if(lastKnob == 0) OLEDwriteFixedFloat(decayCoeff*0.001, 3, 2, 64, SecondLine); //displayed in seconds
 			//best solution so far, maybe put everything in smaller range?
 			else if(lastKnob == 1) OLEDwriteKRangeFixedFloat(newFreqDB, 4, 1, 64, SecondLine);
-			else if(lastKnob == 2) OLEDwriteFixedFloat(newDelayDB*oops.invSampleRate, 4, 3, 64, SecondLine);
+			else if(lastKnob == 2) OLEDwriteFixedFloat(newDelayDB*leaf.invSampleRate, 4, 3, 64, SecondLine);
 			else if(lastKnob == 3) OLEDwriteFixedFloat(newFeedbackDB, 4, 3, 64, SecondLine);
 			/*
 			OLEDwriteFixedFloat(newDelayDB*oops.invSampleRate, 4, 3, 4, SecondLine);
@@ -490,7 +491,7 @@ void displayScreen(void)
 			//display knob values if they correspond to a parameter
 			if(lastKnob == 0) OLEDwriteKRangeFixedFloat(hpFreqDel, 4, 1, 64, SecondLine);
 			else if(lastKnob == 1) OLEDwriteKRangeFixedFloat(lpFreqDel, 4, 1, 64, SecondLine);
-			else if(lastKnob == 2) OLEDwriteFixedFloat(newDelay*oops.invSampleRate, 4, 3, 64, SecondLine);
+			else if(lastKnob == 2) OLEDwriteFixedFloat(newDelay*leaf.invSampleRate, 4, 3, 64, SecondLine);
 			else if(lastKnob == 3) OLEDwriteFixedFloat(newFeedback, 4, 2, 64, SecondLine);
 			/*
 			OLEDwriteFixedFloat(newDelay*oops.invSampleRate, 4, 3, 4, SecondLine);
@@ -518,7 +519,7 @@ void displayScreen(void)
 			//display knob values if they correspond to a parameter
 			if(lastKnob == 0) OLEDwriteFixedFloat(decayCoeff*0.001, 3, 2, 64, SecondLine); //displayed in seconds
 			else if(lastKnob == 1) OLEDwriteKRangeFixedFloat(newFreqDB, 4, 1, 64, SecondLine);
-			else if(lastKnob == 2) OLEDwriteFixedFloat(newDelayDB*oops.invSampleRate, 4, 3, 64, SecondLine);
+			else if(lastKnob == 2) OLEDwriteFixedFloat(newDelayDB*leaf.invSampleRate, 4, 3, 64, SecondLine);
 			else if(lastKnob == 3) OLEDwriteFixedFloat(newFeedbackDB, 4, 3, 64, SecondLine);
 			/*
 			OLEDwriteFixedFloat(newDelayDB*oops.invSampleRate, 4, 3, 4, SecondLine);
