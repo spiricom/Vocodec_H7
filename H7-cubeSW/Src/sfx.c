@@ -754,18 +754,18 @@ int32_t SFXBitcrusherTick(int32_t input)
 
 void SFXDrumboxFrame()
 {
-	if (modeChain[chainIndex] == DrumboxMode)
-	{
-		__KNOBCHECK1__ { decayCoeff = knobVals[0] * 2000; }
-		__KNOBCHECK2__ { newFreqDB =  ((knobVals[1]) * 4.0f) * ((1.0f / newDelayDB) * leaf.sampleRate); }
-		__KNOBCHECK3__ { newDelayDB = interpolateDelayControl(1.0f - knobVals[2]); }
-		__KNOBCHECK4__ { newFeedbackDB = interpolateFeedback(knobVals[3]); }
-	}
-	tRamp_setDest(rampFeedback, newFeedbackDB);
-	tRamp_setDest(rampDelayFreq, newDelayDB);
-	tRamp_setDest(rampSineFreq, newFreqDB);
-	tEnvelopeFollower_decayCoeff(envFollowSine, decayCoeffTable[decayCoeff]);
-	tEnvelopeFollower_decayCoeff(envFollowNoise,0.80f);
+//	if (modeChain[chainIndex] == DrumboxMode)
+//	{
+//		__KNOBCHECK1__ { decayCoeff = knobVals[0] * 2000; }
+//		__KNOBCHECK2__ { newFreqDB =  ((knobVals[1]) * 4.0f) * ((1.0f / newDelayDB) * leaf.sampleRate); }
+//		__KNOBCHECK3__ { newDelayDB = interpolateDelayControl(1.0f - knobVals[2]); }
+//		__KNOBCHECK4__ { newFeedbackDB = interpolateFeedback(knobVals[3]); }
+//	}
+//	tRamp_setDest(rampFeedback, newFeedbackDB);
+//	tRamp_setDest(rampDelayFreq, newDelayDB);
+//	tRamp_setDest(rampSineFreq, newFreqDB);
+//	tEnvelopeFollower_decayCoeff(envFollowSine, decayCoeffTable[decayCoeff]);
+//	tEnvelopeFollower_decayCoeff(envFollowNoise,0.80f);
 }
 
 int32_t SFXDrumboxTick(int32_t input)
