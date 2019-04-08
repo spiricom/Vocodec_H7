@@ -47,7 +47,7 @@ extern float glideTimeAuto;
 extern int harmonizerKey;
 extern int harmonizerScale;
 extern int harmonizerComplexity;
-extern int harmonizerHeat;
+extern int harmonizerMode;
 extern InputMode harmonizerInputMode;
 
 // Delay

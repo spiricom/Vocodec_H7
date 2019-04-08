@@ -86,6 +86,14 @@ char* harmonizerScales[2] =
 	"m"
 };
 
+char* harmonizerModes[4] =
+{
+	"SNG",
+	"HYB",
+	"MUL",
+	"EXP"
+};
+
 char harmonizerParams[5];
 char harmonizerNotes[11];
 
@@ -311,7 +319,7 @@ void displayScreen(void)
 					if (lastWritten != 3) OLEDclearLine(SecondLine);
 					lastWritten = 3;
 
-					OLEDwriteInt(harmonizerHeat, 1, 64, SecondLine);
+					OLEDwriteString(harmonizerModes[harmonizerMode], 3, 64, SecondLine, 0);
 				}
 				else
 				{
@@ -609,7 +617,7 @@ static void initKnobs(void)
 	knobNamesPerMode[HarmonizerMode][0] = "KEY";
 	knobNamesPerMode[HarmonizerMode][1] = "SCL";
 	knobNamesPerMode[HarmonizerMode][2] = "CPLX";
-	knobNamesPerMode[HarmonizerMode][3] = "HEAT";
+	knobNamesPerMode[HarmonizerMode][3] = "MODE";
 
 	knobNamesPerMode[DelayMode][0] = "HPHZ";
 	knobNamesPerMode[DelayMode][1] = "LPHZ";
