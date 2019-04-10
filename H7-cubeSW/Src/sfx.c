@@ -6,7 +6,7 @@
 
 #define NUM_FB_DELAY_TABLES 8
 #define SCALE_LENGTH 7
-#define NELEMS(x)  (sizeof(x) / sizeof((x)[0]))
+#define TRIAD_LENGTH 3
 
 float inBuffer[2048] __ATTR_RAM_D2;
 float outBuffer[NUM_SHIFTERS][2048] __ATTR_RAM_D2;
@@ -110,7 +110,7 @@ int harmonizeStep = -1;
 int harmonizerSuccess = 0;
 int computedFirst = 0;
 
-InputMode harmonizerInputMode = Latch;
+InputMode harmonizerInputMode = Momentary;
 
 // Delay
 float hpFreqDel = 20.0f;
@@ -183,12 +183,11 @@ float interpolateDelayControl(float raw_data);
 float interpolateFeedback(float raw_data);
 float ksTick(float noise_in);
 void calculateFreq(int voice);
-int harmonize(int* triad);
-void voice(int* triad, int* bestTriad);
-void voiceSingle(int* triad, int* offsets);
-void voiceHybrid(int* triad, int* offsets);
+int harmonize();
+void voice(int* bestTriad);
+void voiceSingle(int* offsets, Direction dir);
 int inKey(int note);
-int calcDistance(int* x, int* y);
+int calcDistance(int* x, int* y, int l);
 int copyTriad(int* src, int* dest);
 void sortTriad(int* x);
 void sortTriadRelative(int* x);
@@ -497,26 +496,29 @@ void SFXHarmonizeFrame()
 	}
 	__KNOBCHECK4__ { harmonizerMode = (int) floor(knobVals[3] * 3.0f + 0.5f); }
 
-	if ((prevSungNote != sungNote || prevPlayedNote != playedNote) && harmonizeStep == -1)
+	if (prevSungNote != sungNote || prevPlayedNote != playedNote)
 	{
-		harmonizeStep = 0;
-		if (prevPlayedNote != playedNote)
-		{
-			harmonizeMoved = PLAYED;
-		} else {
-			harmonizeMoved = SUNG;
+		if (harmonizeStep == -1) {
+			harmonizeStep = 0;
+			if (prevPlayedNote != playedNote)
+			{
+				harmonizeMoved = PLAYED;
+			} else {
+				harmonizeMoved = SUNG;
+			}
 		}
+	}  else {
+		harmonizeMoved = NONE;
 	}
 
 	// step through computation
 	if (harmonizeStep != -1) {
-		harmonizerSuccess = harmonize(tempTriad);
+		harmonizerSuccess = harmonize();
 		if (harmonizerSuccess == 1)
 		{
 			if (harmonizeStep == 1)
 			{
 				computedFirst = 1;
-				copyTriad(tempTriad, triad);
 				prevSungNote = sungNote;
 				prevPlayedNote = playedNote;
 				harmonizeStep = -1;
@@ -571,7 +573,7 @@ int32_t SFXHarmonizeTick(int32_t input)
 	sample = (float) (input * INV_TWO_TO_31);
 
 	// attenuate to simulate velocity
-	output += sample * 0.25;
+	output += sample * 0.2;
 
 	freq = oops.sampleRate / tPeriod_findPeriod(p, sample);
 
@@ -654,9 +656,7 @@ int32_t SFXHarmonizeTick(int32_t input)
 
 	output = tFormantShifterAdd(fs, output, 0.0f) * 0.5f;
 
-	if (harmonizerComplexity > 0) {
-		output /= (float) harmonizerComplexity;
-	}
+	output /= (float) (1 + harmonizerComplexity);
 
 	return (int32_t) (output * TWO_TO_31);
 }
@@ -940,7 +940,7 @@ void SFXNoteOff(int key, int velocity)
 
 /**************** Helper Functions *********************/
 
-int harmonize(int* triad)
+int harmonize()
 {
 	if (harmonizeStep == 0)
 	{
@@ -1028,16 +1028,13 @@ int harmonize(int* triad)
 			offsets = majorOffsets;
 		}
 
-		// preserve voiced triad in lastTriad
-		copyTriad(triad, lastTriad);
-
 		if (harmonizerMode == 0)
 		{
-			voiceSingle(triad, offsets);
+			voiceSingle(offsets, UP);
 		}
 		else if (harmonizerMode == 1)
 		{
-			voiceHybrid(triad, offsets);
+			voiceSingle(offsets, DOWN);
 		}
 		else
 		{
@@ -1051,8 +1048,11 @@ int harmonize(int* triad)
 			// triad ends up with best voicing
 			if (shouldVoice == 1)
 			{
-				voice(evalTriad, triad);
+				voice(evalTriad);
 			}
+
+			// preserve voiced triad in lastTriad
+			copyTriad(triad, lastTriad);
 
 			// sort from closest to farthest from sung note
 			sortTriadRelative(triad);
@@ -1065,22 +1065,22 @@ int harmonize(int* triad)
 	}
 }
 
-void voice(int* triad, int* bestTriad)
+void voice(int* evalTriad)
 {
-	int distance = calcDistance(triad, lastTriad);
+	int distance = calcDistance(evalTriad, lastTriad, TRIAD_LENGTH);
     int bestDistance = distance;
 
     // first inversion up
-    triad[0] = triad[0] + 12;
-    sortTriad(triad);
+    evalTriad[0] = evalTriad[0] + 12;
+    sortTriad(evalTriad);
 
-    distance = calcDistance(triad, lastTriad);
+    distance = calcDistance(evalTriad, lastTriad, TRIAD_LENGTH);
     if (harmonizerMode != 3)
     {
 		if (distance < bestDistance)
 		{
 			bestDistance = distance;
-			copyTriad(triad, bestTriad);
+			copyTriad(evalTriad, triad);
 		}
     }
     else
@@ -1088,13 +1088,13 @@ void voice(int* triad, int* bestTriad)
     	if (distance > bestDistance)
 		{
 			bestDistance = distance;
-			copyTriad(triad, bestTriad);
+			copyTriad(evalTriad, triad);
 		}
     }
 
     // second inversion up
-    triad[0] = triad[0] + 12;
-    sortTriad(triad);
+    evalTriad[0] = evalTriad[0] + 12;
+    sortTriad(evalTriad);
 
 //    distance = calcDistance(triad, lastTriad);
 //    if (harmonizerMode == 1)
@@ -1115,18 +1115,18 @@ void voice(int* triad, int* bestTriad)
 //	}
 
     // one octave positive transpose of original triad
-    triad[0] = triad[0] + 12;
-    sortTriad(triad);
+    evalTriad[0] = evalTriad[0] + 12;
+    sortTriad(evalTriad);
 
     // transpose two octaves down
-    for (int i = 0; i < (int) NELEMS(triad); i++)
+    for (int i = 0; i < TRIAD_LENGTH; i++)
     {
-    	triad[i] = triad[i] - 24;
+    	evalTriad[i] = evalTriad[i] - 24;
     }
 
     // first inversion down
-    triad[0] = triad[0] + 12;
-    sortTriad(triad);
+    evalTriad[0] = evalTriad[0] + 12;
+    sortTriad(evalTriad);
 
 //    distance = calcDistance(triad, lastTriad);
 //    if (harmonizerMode == 1)
@@ -1147,36 +1147,37 @@ void voice(int* triad, int* bestTriad)
 //	}
 
     // second inversion down
-    triad[0] = triad[0] + 12;
-    sortTriad(triad);
+    evalTriad[0] = evalTriad[0] + 12;
+    sortTriad(evalTriad);
 
-    distance = calcDistance(triad, lastTriad);
+    distance = calcDistance(evalTriad, lastTriad, TRIAD_LENGTH);
     if (harmonizerMode != 3)
 	{
 		if (distance < bestDistance)
 		{
-			copyTriad(triad, bestTriad);
+			copyTriad(evalTriad, triad);
 		}
 	}
 	else
 	{
 		if (distance > bestDistance)
 		{
-			copyTriad(triad, bestTriad);
+			copyTriad(evalTriad, triad);
 		}
 	}
 }
 
 // TODO: free up constraints if playedNote changes, not sungNote
-void voiceSingle(int* triad, int* offsets)
+void voiceSingle(int* offsets, Direction dir)
 {
 	// prioritize single voice leading over triad voice leading from here on out
 
 	// choose chord tone closest to sung note
 	int voice = -1;
-
 	int bestDist = 127;
-	for (int i = 0; i < NELEMS(triad); i++) {
+
+	for (int i = 0; i < TRIAD_LENGTH; i++)
+	{
 		int dist = abs(triad[i] - sungNote);
 		if (dist < bestDist)
 		{
@@ -1184,9 +1185,11 @@ void voiceSingle(int* triad, int* offsets)
 			voice = triad[i];
 		}
 	}
+
+	// detect whether the sungNote is a chord tone or not
 	int chordTone = 0;
 
-	for (int i = 0; i < NELEMS(triad); i++)
+	for (int i = 0; i < TRIAD_LENGTH; i++)
 	{
 		if ((sungNote - harmonizerKey) % 12 == (triad[i] - harmonizerKey) % 12)
 		{
@@ -1202,29 +1205,47 @@ void voiceSingle(int* triad, int* offsets)
 			// if sungNote moved pick other chord tone that is arrived at from same direction as melody
 			if (voiceDirection == UP)
 			{
-				for (int i = 0; i < NELEMS(triad); i++)
+				for (int i = 0; i < TRIAD_LENGTH; i++)
 				{
 					if (triad[i] > lastSingleVoice)
 					{
 						voice = triad[i];
+						if ((voice - harmonizerKey) % 12 == (sungNote - harmonizerKey) % 12)
+						{
+							voice = triad[(i + 1 + TRIAD_LENGTH) % TRIAD_LENGTH];
+						}
+						break;
 					}
-					else if (i == NELEMS(triad) - 1)
+					else if (i == TRIAD_LENGTH - 1)
 					{
 						voice = triad[0] + 12;
+						if ((voice - harmonizerKey) % 12 == (sungNote - harmonizerKey) % 12)
+						{
+							voice = triad[1] + 12;
+						}
 					}
 				}
 			}
 			else
 			{
-				for (int i = NELEMS(triad) - 1; i >= 0; i--)
+				for (int i = TRIAD_LENGTH - 1; i >= 0; i--)
 				{
 					if (triad[i] < lastSingleVoice)
 					{
 						voice = triad[i];
+						if ((voice - harmonizerKey) % 12 == (sungNote - harmonizerKey) % 12)
+						{
+							voice = triad[(i - 1 + TRIAD_LENGTH) % TRIAD_LENGTH];
+						}
+						break;
 					}
 					else if (i == 0)
 					{
-						voice = triad[NELEMS(triad) - 1] - 12;
+						voice = triad[TRIAD_LENGTH - 1] - 12;
+						if ((voice - harmonizerKey) % 12 == (sungNote - harmonizerKey) % 12)
+						{
+							voice = triad[TRIAD_LENGTH - 2] - 12;
+						}
 					}
 				}
 			}
@@ -1233,7 +1254,7 @@ void voiceSingle(int* triad, int* offsets)
 	else
 	{
 		// if it's a non-chord tone, ensure harmonizer voice is also on a non-chord tone
-		for (int i = 0; i < NELEMS(offsets); i++)
+		for (int i = 0; i < SCALE_LENGTH; i++)
 		{
 			if (offsets[i] == (voice - harmonizerKey) % 12)
 			{
@@ -1243,12 +1264,12 @@ void voiceSingle(int* triad, int* offsets)
 					if (voiceDirection == UP)
 					{
 						// move up one scale degree
-						voice += offsets[(i + 1 + NELEMS(offsets)) % NELEMS(offsets)] - offsets[i];
+						voice += offsets[(i + 1 + SCALE_LENGTH) % SCALE_LENGTH] - offsets[i];
 					}
 					else
 					{
 						// move down one scale degree
-						voice += offsets[(i - 1 + NELEMS(offsets)) % NELEMS(offsets)] - offsets[i];
+						voice += offsets[(i - 1 + SCALE_LENGTH) % SCALE_LENGTH] - offsets[i];
 					}
 				}
 				else
@@ -1257,12 +1278,12 @@ void voiceSingle(int* triad, int* offsets)
 					if (sungNote - voice > 0)
 					{
 						// move up one scale degree
-						voice += offsets[(i + 1 + NELEMS(offsets)) % NELEMS(offsets)] - offsets[i];
+						voice += offsets[(i + 1 + SCALE_LENGTH) % SCALE_LENGTH] - offsets[i];
 					}
 					else
 					{
 						// move down one scale degree
-						voice += offsets[(i - 1 + NELEMS(offsets)) % NELEMS(offsets)] - offsets[i];
+						voice += offsets[(i - 1 + SCALE_LENGTH) % SCALE_LENGTH] - offsets[i];
 					}
 				}
 				break;
@@ -1274,19 +1295,10 @@ void voiceSingle(int* triad, int* offsets)
 	lastSingleVoice = voice;
 }
 
-void voiceHybrid (int* triad, int* offsets)
-{
-	// we'll get there
-}
-
-int calcDistance(int* x, int* y)
+int calcDistance(int* x, int* y, int l)
 {
 	int d = 0;
-	if (NELEMS(x) != NELEMS(y))
-	{
-		return -1;
-	}
-	for (int i = 0; i < (int) NELEMS(x); i++)
+	for (int i = 0; i < l; i++)
 	{
 		d += abs(x[i] - y[i]);
 	}
@@ -1294,11 +1306,7 @@ int calcDistance(int* x, int* y)
 }
 
 int copyTriad(int* src, int* dest) {
-	if (NELEMS(src) != NELEMS(dest))
-	{
-		return 0;
-	}
-	for (int i = 0; i < (int) NELEMS(src); i++)
+	for (int i = 0; i < TRIAD_LENGTH; i++)
 	{
 		dest[i] = src[i];
 	}

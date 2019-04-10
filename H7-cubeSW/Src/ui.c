@@ -88,10 +88,10 @@ char* harmonizerScales[2] =
 
 char* harmonizerModes[4] =
 {
-	"SNG",
-	"HYB",
-	"MUL",
-	"EXP"
+	"SNG-U",
+	"SNG-D",
+	"MUL  ",
+	"EXP  "
 };
 
 char harmonizerParams[5];
@@ -319,7 +319,7 @@ void displayScreen(void)
 					if (lastWritten != 3) OLEDclearLine(SecondLine);
 					lastWritten = 3;
 
-					OLEDwriteString(harmonizerModes[harmonizerMode], 3, 64, SecondLine, 0);
+					OLEDwriteString(harmonizerModes[harmonizerMode], 5, 64, SecondLine, 0);
 				}
 				else
 				{
