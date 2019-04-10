@@ -97,7 +97,7 @@ int tempTriad[3];
 int lastTriad[3];
 int shouldVoice = 0;
 int lastSingleVoice = -1;
-Direction voiceDirection = NONE;
+
 NoteType harmonizeMoved = NEITHER;
 
 int harmonizerKey = 0;
@@ -184,13 +184,14 @@ float interpolateFeedback(float raw_data);
 float ksTick(float noise_in);
 void calculateFreq(int voice);
 int harmonize();
-void voice(int* bestTriad);
+void voice();
 void voiceSingle(int* offsets, Direction dir);
 int inKey(int note);
 int calcDistance(int* x, int* y, int l);
 int copyTriad(int* src, int* dest);
 void sortTriad(int* x);
 void sortTriadRelative(int* x);
+void voiceAvoid(int* x);
 void swap(int* x, int i, int j);
 
 /****************************************************************************************/
@@ -591,16 +592,6 @@ int32_t SFXHarmonizeTick(int32_t input)
 				if (pitchDetectedNote <= 127 && pitchDetectedNote >= 0)
 				{
 					sungNote = pitchDetectedNote;
-
-					// voice direction
-					if (sungNote > prevSungNote)
-					{
-						voiceDirection = UP;
-					}
-					else
-					{
-						voiceDirection = DOWN;
-					}
 				}
 			}
 		}
@@ -1038,41 +1029,43 @@ int harmonize()
 		}
 		else
 		{
-			// copy triad to be rearranged and evaluated
-			int evalTriad[3];
-			copyTriad(triad, evalTriad);
-
-			// set to first inversion down
-			triad[2] = triad[2] - 12;
-
 			// triad ends up with best voicing
 			if (shouldVoice == 1)
 			{
-				voice(evalTriad);
+				voice();
 			}
+
+			// always voice after triad has been voiced
+			shouldVoice = 1;
 
 			// preserve voiced triad in lastTriad
 			copyTriad(triad, lastTriad);
 
 			// sort from closest to farthest from sung note
 			sortTriadRelative(triad);
-		}
 
-		// always voice after triad has been voiced
-		shouldVoice = 1;
+			voiceAvoid(triad);
+		}
 
 		return 1;
 	}
 }
 
-void voice(int* evalTriad)
+void voice()
 {
-	int distance = calcDistance(evalTriad, lastTriad, TRIAD_LENGTH);
-    int bestDistance = distance;
+    // set to first inversion down
+    triad[2] = triad[2] - 12;
+
+    // copy triad to be rearranged and evaluated
+	int evalTriad[3];
+	copyTriad(triad, evalTriad);
 
     // first inversion up
     evalTriad[0] = evalTriad[0] + 12;
     sortTriad(evalTriad);
+
+    int distance = calcDistance(evalTriad, lastTriad, TRIAD_LENGTH);
+	int bestDistance = distance;
 
     distance = calcDistance(evalTriad, lastTriad, TRIAD_LENGTH);
     if (harmonizerMode != 3)
@@ -1096,24 +1089,6 @@ void voice(int* evalTriad)
     evalTriad[0] = evalTriad[0] + 12;
     sortTriad(evalTriad);
 
-//    distance = calcDistance(triad, lastTriad);
-//    if (harmonizerMode == 1)
-//	{
-//		if (distance < bestDistance)
-//		{
-//			bestDistance = distance;
-//			copyTriad(triad, bestTriad);
-//		}
-//	}
-//	else
-//	{
-//		if (distance > bestDistance)
-//		{
-//			bestDistance = distance;
-//			copyTriad(triad, bestTriad);
-//		}
-//	}
-
     // one octave positive transpose of original triad
     evalTriad[0] = evalTriad[0] + 12;
     sortTriad(evalTriad);
@@ -1127,24 +1102,6 @@ void voice(int* evalTriad)
     // first inversion down
     evalTriad[0] = evalTriad[0] + 12;
     sortTriad(evalTriad);
-
-//    distance = calcDistance(triad, lastTriad);
-//    if (harmonizerMode == 1)
-//	{
-//		if (distance < bestDistance)
-//		{
-//			bestDistance = distance;
-//			copyTriad(triad, bestTriad);
-//		}
-//	}
-//	else
-//	{
-//		if (distance > bestDistance)
-//		{
-//			bestDistance = distance;
-//			copyTriad(triad, bestTriad);
-//		}
-//	}
 
     // second inversion down
     evalTriad[0] = evalTriad[0] + 12;
@@ -1167,124 +1124,79 @@ void voice(int* evalTriad)
 	}
 }
 
-// TODO: free up constraints if playedNote changes, not sungNote
+// TODO: free up constraints on playedNote changes, think about lastSingleVoice
 void voiceSingle(int* offsets, Direction dir)
 {
-	// prioritize single voice leading over triad voice leading from here on out
+	int evalTriad[3];
+	copyTriad(triad, evalTriad);
 
-	// choose chord tone closest to sung note
-	int voice = -1;
-	int bestDist = 127;
-
-	for (int i = 0; i < TRIAD_LENGTH; i++)
-	{
-		int dist = abs(triad[i] - sungNote);
-		if (dist < bestDist)
+	// transpose triad notes to be strictly greater or less than sung note
+	if (dir == UP) {
+		for (int i = 0; i < TRIAD_LENGTH; i++)
 		{
-			bestDist = dist;
-			voice = triad[i];
+			if (evalTriad[i] < sungNote)
+			{
+				evalTriad[i] = evalTriad[i] + 12;
+			}
 		}
 	}
+	else
+	{
+		for (int i = 0; i < TRIAD_LENGTH; i++)
+		{
+			if (evalTriad[i] > sungNote)
+			{
+				evalTriad[i] = evalTriad[i] - 12;
+			}
+		}
+	}
+
+	// sort triad relative to sungNote
+	sortTriadRelative(evalTriad);
 
 	// detect whether the sungNote is a chord tone or not
 	int chordTone = 0;
 
 	for (int i = 0; i < TRIAD_LENGTH; i++)
 	{
-		if ((sungNote - harmonizerKey) % 12 == (triad[i] - harmonizerKey) % 12)
+		if ((sungNote - harmonizerKey) % 12 == (evalTriad[i] - harmonizerKey) % 12)
 		{
 			chordTone = 1;
 			break;
 		}
 	}
 
+	int voice = evalTriad[0];
 
 	if (chordTone == 1)
 	{
-		if (harmonizeMoved == SUNG) {
-			// if sungNote moved pick other chord tone that is arrived at from same direction as melody
-			if (voiceDirection == UP)
+		// find closest chord tone harmonization
+		for (int i = 0; i < TRIAD_LENGTH; i++)
+		{
+			if (evalTriad[i] != sungNote)
 			{
-				for (int i = 0; i < TRIAD_LENGTH; i++)
-				{
-					if (triad[i] > lastSingleVoice)
-					{
-						voice = triad[i];
-						if ((voice - harmonizerKey) % 12 == (sungNote - harmonizerKey) % 12)
-						{
-							voice = triad[(i + 1 + TRIAD_LENGTH) % TRIAD_LENGTH];
-						}
-						break;
-					}
-					else if (i == TRIAD_LENGTH - 1)
-					{
-						voice = triad[0] + 12;
-						if ((voice - harmonizerKey) % 12 == (sungNote - harmonizerKey) % 12)
-						{
-							voice = triad[1] + 12;
-						}
-					}
-				}
-			}
-			else
-			{
-				for (int i = TRIAD_LENGTH - 1; i >= 0; i--)
-				{
-					if (triad[i] < lastSingleVoice)
-					{
-						voice = triad[i];
-						if ((voice - harmonizerKey) % 12 == (sungNote - harmonizerKey) % 12)
-						{
-							voice = triad[(i - 1 + TRIAD_LENGTH) % TRIAD_LENGTH];
-						}
-						break;
-					}
-					else if (i == 0)
-					{
-						voice = triad[TRIAD_LENGTH - 1] - 12;
-						if ((voice - harmonizerKey) % 12 == (sungNote - harmonizerKey) % 12)
-						{
-							voice = triad[TRIAD_LENGTH - 2] - 12;
-						}
-					}
-				}
+				voice = evalTriad[i];
+				break;
 			}
 		}
 	}
 	else
 	{
-		// if it's a non-chord tone, ensure harmonizer voice is also on a non-chord tone
+		// find closest none chord tone harmonization
 		for (int i = 0; i < SCALE_LENGTH; i++)
 		{
 			if (offsets[i] == (voice - harmonizerKey) % 12)
 			{
-				if (harmonizeMoved == SUNG)
+				// make sure it moves to a non-chord tone in the direction of the melody
+				if (dir == UP)
 				{
-					// make sure it moves to a non-chord tone in the direction of the melody
-					if (voiceDirection == UP)
-					{
-						// move up one scale degree
-						voice += offsets[(i + 1 + SCALE_LENGTH) % SCALE_LENGTH] - offsets[i];
-					}
-					else
-					{
-						// move down one scale degree
-						voice += offsets[(i - 1 + SCALE_LENGTH) % SCALE_LENGTH] - offsets[i];
-					}
+					// move up one scale degree
+					voice += offsets[(i + 1 + SCALE_LENGTH) % SCALE_LENGTH] - offsets[i];
 				}
 				else
 				{
-					// move to non-chord tone in direction of melody
-					if (sungNote - voice > 0)
-					{
-						// move up one scale degree
-						voice += offsets[(i + 1 + SCALE_LENGTH) % SCALE_LENGTH] - offsets[i];
-					}
-					else
-					{
-						// move down one scale degree
-						voice += offsets[(i - 1 + SCALE_LENGTH) % SCALE_LENGTH] - offsets[i];
-					}
+					// move down one scale degree
+					voice += offsets[(i - 1 + SCALE_LENGTH) % SCALE_LENGTH] - offsets[i];
 				}
 				break;
 			}
@@ -1292,7 +1204,6 @@ void voiceSingle(int* offsets, Direction dir)
 	}
 
 	triad[0] = voice;
-	lastSingleVoice = voice;
 }
 
 int calcDistance(int* x, int* y, int l)
@@ -1351,6 +1262,10 @@ void sortTriadRelative(int* x)
 		// swap first two elements
 		swap(x, 0, 1);
 	}
+}
+
+void voiceAvoid(int* x)
+{
 	if (abs(x[0] - sungNote) == 0)
 	{
 		// if the closest note is the same as the sung note, move to end
