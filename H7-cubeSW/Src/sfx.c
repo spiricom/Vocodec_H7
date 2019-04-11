@@ -482,6 +482,9 @@ int32_t SFXAutotuneAbsoluteTick(int32_t input)
 
 void SFXHarmonizeFrame()
 {
+	int mpolyMonoNote = -1;
+	int mpolyMonoVel = -1;
+
 	tMPoly_setNumVoices(mpoly, 1);
 
 	__KNOBCHECK1__ { harmonizerKey = (int) floor(knobVals[0] * 11.0f + 0.5f); }
@@ -496,6 +499,32 @@ void SFXHarmonizeFrame()
 		}
 	}
 	__KNOBCHECK4__ { harmonizerMode = (int) floor(knobVals[3] * 3.0f + 0.5f); }
+
+	// get mono pitch
+	mpolyMonoNote = tMPoly_getPitch(mpoly, 0);
+	mpolyMonoVel = tMPoly_getVelocity(mpoly, 0);
+
+	// set playedNote based on whether latching is turned on
+	if (harmonizerInputMode == Latch)
+	{
+		if (mpolyMonoVel > 0)
+		{
+			latchedNote = mpolyMonoNote;
+		}
+	}
+	else
+	{
+		latchedNote = -1;
+	}
+
+	if (mpolyMonoVel > 0)
+	{
+		playedNote = mpolyMonoNote;
+	}
+	else
+	{
+		playedNote = -1;
+	}
 
 	if (prevSungNote != sungNote || prevPlayedNote != playedNote)
 	{
@@ -540,36 +569,9 @@ int32_t SFXHarmonizeTick(int32_t input)
 	float sample = 0.0f;
 	float output = 0.0f;
 	float freq;
-	int mpolyMonoNote = -1;
-	int mpolyMonoVel = -1;
 	int voices;
 
-	// get mono pitch
 	tMPoly_tick(mpoly);
-	mpolyMonoNote = tMPoly_getPitch(mpoly, 0);
-	mpolyMonoVel = tMPoly_getVelocity(mpoly, 0);
-
-	// set playedNote based on whether latching is turned on
-	if (harmonizerInputMode == Latch)
-	{
-		if (mpolyMonoVel > 0)
-		{
-			latchedNote = mpolyMonoNote;
-		}
-	}
-	else
-	{
-		latchedNote = -1;
-	}
-
-	if (mpolyMonoVel > 0)
-	{
-		playedNote = mpolyMonoNote;
-	}
-	else
-	{
-		playedNote = -1;
-	}
 
 	sample = (float) (input * INV_TWO_TO_31);
 
