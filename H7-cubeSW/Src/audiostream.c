@@ -16,6 +16,9 @@ int32_t audioInBuffer[AUDIO_BUFFER_SIZE] __ATTR_RAM_D2;
 float audioTickL(float audioIn);
 float audioTickR(float audioIn);
 
+int bypass = 0;
+int sustainInverted = 0;
+
 HAL_StatusTypeDef transmit_status;
 HAL_StatusTypeDef receive_status;
 
@@ -32,36 +35,6 @@ typedef enum BOOL {
 	TRUE
 } BOOL;
 
-int sustain = 0;
-int sustainInverted = 0;
-int noteSounding[128];
-int noteHeld[128];
-int bypass = 0;
-
-void clearNotes(void)
-{
-	for (int key = 0; key < 128; key++)
-	{
-		noteSounding[key] = 0;
-		noteHeld[key] = 0;
-		SFXNoteOff(key, 64);
-	}
-}
-
-void toggleBypass(void)
-{
-	if (bypass) bypass = 0;
-	else		bypass = 1;
-
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, bypass ? GPIO_PIN_SET : GPIO_PIN_RESET);
-}
-
-void toggleSustain(void)
-{
-	if (sustainInverted) 	sustainInverted = 0;
-	else 					sustainInverted = 1;
-}
-
 void noteOn(int key, int velocity)
 {
 	if (!velocity)
@@ -72,24 +45,34 @@ void noteOn(int key, int velocity)
 	else
 	{
 		SFXNoteOn(key, velocity);
-		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_SET);    //LED
+		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_SET);    //LED3
 	}
 }
 
 void noteOff(int key, int velocity)
 {
 	SFXNoteOff(key, velocity);
-	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_RESET);    //LED
+	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_RESET);    //LED3
 }
 
-void sustainOn(void)
+void sustainOff()
 {
-	sustain = TRUE;
+
 }
 
-void sustainOff(void)
+void sustainOn()
 {
-	sustain = FALSE;
+
+}
+
+void toggleBypass()
+{
+
+}
+
+void toggleSustain()
+{
+
 }
 
 void ctrlInput(int ctrl, int value)
@@ -99,8 +82,7 @@ void ctrlInput(int ctrl, int value)
 
 void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTypeDef* hsaiIn, RNG_HandleTypeDef* hrand)
 {
-	// Initialize LEAF.
-	// LEAF_init(SAMPLE_RATE, AUDIO_FRAME_SIZE, &randomNumber);
+	// Initialize the audio library.
 	SFXInit(SAMPLE_RATE, AUDIO_FRAME_SIZE);
 
 	//now to send all the necessary messages to the codec
@@ -117,8 +99,6 @@ void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTy
 	// set up the I2S driver to send audio data to the codec (and retrieve input as well)
 	transmit_status = HAL_SAI_Transmit_DMA(hsaiOut, (uint8_t *)&audioOutBuffer[0], AUDIO_BUFFER_SIZE);
 	receive_status = HAL_SAI_Receive_DMA(hsaiIn, (uint8_t *)&audioInBuffer[0], AUDIO_BUFFER_SIZE);
-
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
 }
 
 int numSamples = AUDIO_FRAME_SIZE;
@@ -216,6 +196,7 @@ static void initFunctionPointers(void)
 	frameFunctions[LevelMode] = SFXLevelFrame;
 	tickFunctions[LevelMode] = SFXLevelTick;
 }
+
 
 void HAL_SAI_ErrorCallback(SAI_HandleTypeDef *hsai)
 {

@@ -588,7 +588,7 @@ int32_t SFXHarmonizeTick(int32_t input)
 			pitchDetectedSeq++;
 
 			// wait for # of same pitchDetected notes in a row, then change
-			if (pitchDetectedSeq > 6000)
+			if (pitchDetectedSeq > 2048)
 			{
 				if (pitchDetectedNote <= 127 && pitchDetectedNote >= 0)
 				{
