@@ -907,7 +907,7 @@ void SFXNoteOn(int key, int velocity)
 	{
 		if (tMPoly_isOn(&mpoly, i) == 1)
 		{
-			tRampSetDest(&ramp[i], (float)(tMPoly_getVelocity(&mpoly, i) * INV_TWO_TO_7));
+			tRamp_setDest(&ramp[i], (float)(tMPoly_getVelocity(&mpoly, i) * INV_TWO_TO_7));
 			calculateFreq(i);
 		}
 	}
@@ -918,13 +918,13 @@ void SFXNoteOff(int key, int velocity)
 	if (chordArray[key%12] > 0) chordArray[key%12]--;
 
 	int voice = tMPoly_noteOff(&mpoly, key);
-	if (voice >= 0) tRampSetDest(ramp[voice], 0.0f);
+	if (voice >= 0) tRamp_setDest(&ramp[voice], 0.0f);
 
 	for (int i = 0; i < mpoly.numVoices; i++)
 	{
 		if (tMPoly_isOn(&mpoly, i) == 1)
 		{
-			tRampSetDest(ramp[i], (float)(tMPoly_getVelocity(&mpoly, i) * INV_TWO_TO_7));
+			tRamp_setDest(&ramp[i], (float)(tMPoly_getVelocity(&mpoly, i) * INV_TWO_TO_7));
 			calculateFreq(i);
 		}
 	}

@@ -64,30 +64,12 @@ void toggleSustain(void)
 
 void noteOn(int key, int velocity)
 {
-	if (!velocity)
-	{
-		noteOff(key, velocity);
-	}
-	else
-	{
-		noteSounding[key] = 1;
-
-		noteHeld[key] = 1;
-
-		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_SET);    //LED3
-	}
+	SFXNoteOn(key, velocity);
 }
 
 void noteOff(int key, int velocity)
 {
-	if (!sustain)
-	{
-		noteSounding[key] = 0;
-
-		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_RESET);    //LED3
-	}
-
-	noteHeld[key] = 0;
+	SFXNoteOff(key, velocity);
 }
 
 void sustainOn(void)
@@ -153,7 +135,7 @@ void audioFrame(uint16_t buffer_offset)
 		{
 			for (int i = 0; i < NUM_KNOBS; i++)
 			{
-				knobVals[i] = tRamp_tick(knobRamps[i]);
+				knobVals[i] = tRamp_tick(&knobRamps[i]);
 			}
 			sample = (int) (audioInBuffer[buffer_offset+(cc*2)] * inputLevel);
 			if (modeChain[chainIndex] != ModeNil)
@@ -176,7 +158,7 @@ void audioFrame(uint16_t buffer_offset)
 		{
 			for (int i = 0; i < NUM_KNOBS; i++)
 			{
-				knobVals[i] = tRamp_tick(knobRamps[i]);
+				knobVals[i] = tRamp_tick(&knobRamps[i]);
 			}
 			sample = (int) (audioInBuffer[buffer_offset+(cc*2)] * inputLevel);
 			for (int i = 0; i < CHAIN_LENGTH; i++)

@@ -91,7 +91,7 @@ extern GFX theGFX;
 extern uint16_t* adcVals;
 extern float knobVals[NUM_KNOBS];
 extern float knobValsPerMode[ModeCount][NUM_KNOBS];
-extern tRamp* knobRamps[NUM_KNOBS];
+extern tRamp knobRamps[NUM_KNOBS];
 extern uint8_t knobActive[NUM_KNOBS];
 extern char* knobNamesPerMode[ModeCount][NUM_KNOBS];
 extern uint8_t lastKnob;

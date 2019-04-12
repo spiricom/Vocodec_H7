@@ -10,7 +10,7 @@ char oled_buffer[32];
 
 uint16_t* adcVals;
 float knobVals[NUM_KNOBS];
-tRamp* knobRamps[NUM_KNOBS];
+tRamp knobRamps[NUM_KNOBS];
 float lastval[NUM_KNOBS];
 uint8_t knobActive[NUM_KNOBS];
 float knobValsOnModeChange[NUM_KNOBS];
@@ -120,7 +120,7 @@ void UIInit(uint16_t* myADCArray)
 
 	for(int i = 0; i < NUM_KNOBS; i++)
 	{
-		tRamp_init(knobRamps[i], 100.0f, 1);
+		tRamp_init(&knobRamps[i], 100.0f, 1);
 
 		val = (int) (adcVals[(NUM_KNOBS-1)-i] * 0.00390625f);
 		lastval[i] = val;
@@ -128,8 +128,8 @@ void UIInit(uint16_t* myADCArray)
 		if (val < 0.025f) val = 0.025;
 		else if (val > 0.975f) val = 0.975f;
 		val = (val - 0.025f) / 0.95f;
-		tRamp_setDest(knobRamps[i], val);
-		tRamp_setVal(knobRamps[i], val);
+		tRamp_setDest(&knobRamps[i], val);
+		tRamp_setVal(&knobRamps[i], val);
 		knobVals[i] = val;
 	}
 	initKnobs();
@@ -198,7 +198,7 @@ void processKnobs(void)
 			if (val < 0.025f) val = 0.025;
 			else if (val > 0.975f) val = 0.975f;
 			val = (val - 0.025f) / 0.95f;
-			tRamp_setDest(knobRamps[i], val);
+			tRamp_setDest(&knobRamps[i], val);
 		}
 	}
 }
