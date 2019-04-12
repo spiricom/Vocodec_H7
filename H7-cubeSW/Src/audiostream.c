@@ -64,12 +64,22 @@ void toggleSustain(void)
 
 void noteOn(int key, int velocity)
 {
-	SFXNoteOn(key, velocity);
+	if (!velocity)
+	{
+		SFXNoteOff(key, velocity);
+		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_RESET);    //LED
+	}
+	else
+	{
+		SFXNoteOn(key, velocity);
+		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_SET);    //LED
+	}
 }
 
 void noteOff(int key, int velocity)
 {
 	SFXNoteOff(key, velocity);
+	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_RESET);    //LED
 }
 
 void sustainOn(void)
@@ -80,14 +90,6 @@ void sustainOn(void)
 void sustainOff(void)
 {
 	sustain = FALSE;
-
-	for (int key = 0; key < 128; key++)
-	{
-		if (noteSounding[key] && !noteHeld[key])
-		{
-			noteSounding[key] = 0;
-		}
-	}
 }
 
 void ctrlInput(int ctrl, int value)
