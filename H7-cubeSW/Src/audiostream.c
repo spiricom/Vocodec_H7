@@ -116,7 +116,8 @@ void ctrlInput(int ctrl, int value)
 void audioInit(I2C_HandleTypeDef* hi2c, SAI_HandleTypeDef* hsaiOut, SAI_HandleTypeDef* hsaiIn, RNG_HandleTypeDef* hrand)
 {
 	// Initialize LEAF.
-	LEAF_init(SAMPLE_RATE, AUDIO_FRAME_SIZE, &randomNumber);
+	// LEAF_init(SAMPLE_RATE, AUDIO_FRAME_SIZE, &randomNumber);
+	SFXInit(SAMPLE_RATE, AUDIO_FRAME_SIZE);
 
 	//now to send all the necessary messages to the codec
 	AudioCodec_init(hi2c);
