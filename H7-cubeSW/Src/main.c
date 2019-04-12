@@ -68,7 +68,7 @@
 #include "custom_fonts.h"
 #include "gfx.h"
 #include "ui.h"
-#include "leaf.h"
+#include "sfx.h"
 
 
 // FOR BEST SPEED
@@ -98,8 +98,6 @@ int pinValue = 0;
 
 uint8_t ball[]  = {0x00, 0x3C, 0x7E, 0x7E, 0x7E, 0x7E, 0x3C, 0x00};
 static unsigned char testblock[] = {0x00, 0x7C, 0x7E, 0x0B, 0x0B, 0x7E, 0x7C, 0x00};
-
-char info[12];
 
 /* USER CODE END PV */
 
@@ -216,8 +214,37 @@ int main(void)
 
   GFXsetTextColor(&theGFX, 1, 0);
   GFXsetTextSize(&theGFX, 1);
+  /*
+  GFXfillRect(&theGFX, 0, 0, 128, 16, 0);
+  GFXsetCursor(&theGFX, 0,15);
+  GFXwrite(&theGFX,'P');
+  GFXwrite(&theGFX,'I');
+  GFXwrite(&theGFX,'T');
+  GFXwrite(&theGFX,'C');
+  GFXwrite(&theGFX,'H');
+  GFXwrite(&theGFX,'S');
+  GFXwrite(&theGFX,'H');
+  GFXwrite(&theGFX,'I');
+  GFXwrite(&theGFX,'F');
+  GFXwrite(&theGFX,'T');
+  */
+  /*
+  OLEDwriteString("OH NOES", 7, 0, FirstLine);
+  GFXsetFont(&theGFX, &URW_Gothic_L_Book_16);
+  OLEDwriteString("IT ME", 5, 0, SecondLine);
+  */
+  //OLEDwriteFixedFloatLine(8.463f, 4, 3, FirstLine);
+  //GFXsetCursor(&theGFX, 100,16);
+  //GFXwriteFastHLine(&theGFX, 0, 24,
+          //128, 1);
+
+  //GFXwrite(&theGFX,'A');
+  //GFXdrawChar(&theGFX,0,0,'H', 1, 0, 2);
 
   ssd1306_display_full_buffer();
+
+  //HAL_Delay(500);
+  //sdd1306_invertDisplay(1);
 
 
   // this code sets the processor to treat denormal numbers (very tiny floats) as zero to improve performance.

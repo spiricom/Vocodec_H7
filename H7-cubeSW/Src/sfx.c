@@ -574,8 +574,6 @@ int32_t SFXHarmonizeTick(int32_t input)
 
 	sample = (float) (input * INV_TWO_TO_31);
 
-	return (int32_t) 0;
-
 	// attenuate to simulate velocity
 	output += sample * 0.2;
 
