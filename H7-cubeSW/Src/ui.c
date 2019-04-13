@@ -19,6 +19,8 @@ KnobInteraction knobInteraction = Hysteresis;
 char* knobNamesPerMode[ModeCount][NUM_KNOBS];
 uint8_t lastKnob;
 uint8_t buttonActive;
+int transpose = 0;
+char transposeString[2];
 
 uint8_t buttonsHeld[NUM_BUTTONS];
 
@@ -91,6 +93,7 @@ char* harmonizerModes[4] =
 {
 	"SNG-U",
 	"SNG-D",
+	"HYB  ",
 	"MUL  ",
 	"EXP  "
 };
@@ -690,10 +693,22 @@ static void writeScreen(void)
 		{
 			if (autotuneLock > 0) OLEDwriteLine("LOCK", 4, SecondLine);
 		}
-		else if (modeChain[chainIndex] == AutotuneAbsoluteMode || modeChain[chainIndex] == VocoderMode || modeChain[chainIndex] == SynthMode || modeChain[chainIndex] == HarmonizerMode)
+		else if (modeChain[chainIndex] == AutotuneAbsoluteMode || modeChain[chainIndex] == VocoderMode || modeChain[chainIndex] == SynthMode)
 		{
 			//OLEDwriteIntLine(numActiveVoices[modeChain[chainIndex]], 1, SecondLine);
 			OLEDwriteInt(numActiveVoices[modeChain[chainIndex]], 1, 116, FirstLine);
+		}
+		else if (modeChain[chainIndex] == HarmonizerMode)
+		{
+			itoa(abs(transpose), transposeString, 10);
+			if (transpose < 0)
+			{
+				OLEDwriteString(transposeString, 1, 116, FirstLine, 1);
+			}
+			else if (transpose >= 0)
+			{
+				OLEDwriteString(transposeString, 1, 116, FirstLine, 0);
+			}
 		}
 		else
 		{
@@ -720,9 +735,21 @@ static void writeScreen(void)
 		{
 			if (autotuneLock > 0) OLEDwriteLine("LOCK", 4, SecondLine);
 		}
-		else if (modeChain[chainIndex] == AutotuneAbsoluteMode || modeChain[chainIndex] == VocoderMode || modeChain[chainIndex] == SynthMode || modeChain[chainIndex] == HarmonizerMode)
+		else if (modeChain[chainIndex] == AutotuneAbsoluteMode || modeChain[chainIndex] == VocoderMode || modeChain[chainIndex] == SynthMode)
 		{
 			OLEDwriteInt(numActiveVoices[modeChain[chainIndex]], 1, 116, FirstLine);
+		}
+		else if (modeChain[chainIndex] == HarmonizerMode)
+		{
+			if (transpose < 0)
+			{
+				OLEDwriteString("-", 1, 100, FirstLine, 0);
+			}
+			else if (transpose > 0)
+			{
+				OLEDwriteString("+", 1, 100, FirstLine, 0);
+			}
+			OLEDwriteInt(abs(transpose), 1, 116, FirstLine);
 		}
 	}
 }
@@ -811,12 +838,20 @@ static void upButtonWasPressed()
 			//else numActiveVoices[mode] = NUM_SHIFTERS;
 			writeScreen();
 		}
-		else if (modeChain[chainIndex] == VocoderMode || modeChain[chainIndex] == SynthMode || modeChain[chainIndex] == HarmonizerMode)
+		else if (modeChain[chainIndex] == VocoderMode || modeChain[chainIndex] == SynthMode)
 		{
 			if (numActiveVoices[modeChain[chainIndex]] < NUM_VOICES) numActiveVoices[modeChain[chainIndex]]++;
 			else numActiveVoices[modeChain[chainIndex]] = 1;
 			//else numActiveVoices[mode] = NUM_VOICES;
 			writeScreen();
+		}
+		else if (modeChain[chainIndex] == HarmonizerMode)
+		{
+			if (transpose != 12)
+			{
+				transpose++;
+				writeScreen();
+			}
 		}
 	}
 }
@@ -881,12 +916,20 @@ static void downButtonWasPressed()
 			//else activeShifters = 1;
 			writeScreen();
 		}
-		else if (modeChain[chainIndex] == VocoderMode || modeChain[chainIndex] == SynthMode || modeChain[chainIndex] == HarmonizerMode)
+		else if (modeChain[chainIndex] == VocoderMode || modeChain[chainIndex] == SynthMode)
 		{
 			if (numActiveVoices[modeChain[chainIndex]] > 1) numActiveVoices[modeChain[chainIndex]]--;
 			else numActiveVoices[modeChain[chainIndex]] = NUM_VOICES;
 			//else activeVoices = 1;
 			writeScreen();
+		}
+		else if (modeChain[chainIndex] == HarmonizerMode)
+		{
+			if (transpose != -12)
+			{
+				transpose--;
+				writeScreen();
+			}
 		}
 	}
 }

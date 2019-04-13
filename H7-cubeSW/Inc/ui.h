@@ -96,6 +96,7 @@ extern uint8_t knobActive[NUM_KNOBS];
 extern char* knobNamesPerMode[ModeCount][NUM_KNOBS];
 extern uint8_t lastKnob;
 extern uint8_t buttonActive;
+extern int transpose;
 
 
 typedef enum _OLEDLine

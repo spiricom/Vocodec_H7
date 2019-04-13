@@ -184,7 +184,7 @@ float ksTick(float noise_in);
 void calculateFreq(int voice);
 int harmonize();
 void voice();
-void voiceSingle(int* offsets, Direction dir);
+int voiceSingle(int* offsets, Direction dir);
 int inKey(int note);
 int calcDistance(int* x, int* y, int l);
 int copyTriad(int* src, int* dest);
@@ -490,14 +490,22 @@ void SFXHarmonizeFrame()
 	__KNOBCHECK2__ { harmonizerScale = (int) floor(knobVals[1] + 0.5f); }
 	__KNOBCHECK3__ {
 		harmonizerComplexity = (int) floor(knobVals[2] * 3.0f + 0.5f);
-		if (harmonizerMode == 0)
+		if (harmonizerMode == 0 || harmonizerMode == 1)
 		{
 			 if (harmonizerComplexity > 1) {
 				 harmonizerComplexity = 1;
 			 }
 		}
+		else if (harmonizerMode == 2)
+		{
+			if (harmonizerComplexity > 2) {
+				 harmonizerComplexity = 2;
+			 }
+		}
 	}
-	__KNOBCHECK4__ { harmonizerMode = (int) floor(knobVals[3] * 3.0f + 0.5f); }
+	__KNOBCHECK4__ { harmonizerMode = (int) floor(knobVals[3] * 4.0f + 0.5f); }
+
+	numActiveVoices[HarmonizerMode] = harmonizerComplexity;
 
 	// get mono pitch
 	mpolyMonoNote = tMPoly_getPitch(&mpoly, 0);
@@ -568,7 +576,6 @@ int32_t SFXHarmonizeTick(int32_t input)
 	float sample = 0.0f;
 	float output = 0.0f;
 	float freq;
-	int voices;
 
 	tMPoly_tick(&mpoly);
 
@@ -635,15 +642,9 @@ int32_t SFXHarmonizeTick(int32_t input)
 	// pitch shifting
 	sample = tFormantShifter_remove(&fs, sample * 2.0f);
 
-	if (numActiveVoices[HarmonizerMode] < harmonizerComplexity) {
-		voices = numActiveVoices[HarmonizerMode];
-	} else {
-		voices = harmonizerComplexity;
-	}
-
-	for (int i = 0; i < voices; i++)
+	for (int i = 0; i < harmonizerComplexity; i++)
 	{
-		output += tPitchShift_shiftToFreq(&pshift[i], LEAF_midiToFrequency(triad[i])) * tRamp_sample(&ramp[i + 1]);
+		output += tPitchShift_shiftToFreq(&pshift[i], LEAF_midiToFrequency(triad[i] + (transpose * 12))) * tRamp_sample(&ramp[i + 1]);
 	}
 
 	output = tFormantShifter_add(&fs, output, 0.0f) * 0.5f;
@@ -907,7 +908,7 @@ void SFXNoteOn(int key, int velocity)
 	{
 		if (tMPoly_isOn(&mpoly, i) == 1)
 		{
-			tRamp_setDest(&ramp[i], (float)(tMPoly_getVelocity(&mpoly, i) * INV_TWO_TO_7));
+			tRamp_setDest(&ramp[i], 1.0f);
 			calculateFreq(i);
 		}
 	}
@@ -924,7 +925,7 @@ void SFXNoteOff(int key, int velocity)
 	{
 		if (tMPoly_isOn(&mpoly, i) == 1)
 		{
-			tRamp_setDest(&ramp[i], (float)(tMPoly_getVelocity(&mpoly, i) * INV_TWO_TO_7));
+			tRamp_setDest(&ramp[i], 1.0f);
 			calculateFreq(i);
 		}
 	}
@@ -1022,11 +1023,18 @@ int harmonize()
 
 		if (harmonizerMode == 0)
 		{
-			voiceSingle(offsets, UP);
+			triad[0] = voiceSingle(offsets, UP);
 		}
 		else if (harmonizerMode == 1)
 		{
-			voiceSingle(offsets, DOWN);
+			triad[0] = voiceSingle(offsets, DOWN);
+		}
+		else if (harmonizerMode == 2)
+		{
+			int upVoice = voiceSingle(offsets, UP);
+			int downVoice = voiceSingle(offsets, DOWN);
+			triad[0] = upVoice;
+			triad[1] = downVoice;
 		}
 		else
 		{
@@ -1126,7 +1134,7 @@ void voice()
 }
 
 // TODO: free up constraints on playedNote changes, think about lastSingleVoice
-void voiceSingle(int* offsets, Direction dir)
+int voiceSingle(int* offsets, Direction dir)
 {
 	int evalTriad[3];
 	copyTriad(triad, evalTriad);
@@ -1191,20 +1199,35 @@ void voiceSingle(int* offsets, Direction dir)
 				// make sure it moves to a non-chord tone in the direction of the melody
 				if (dir == UP)
 				{
-					// move up one scale degree
-					voice += offsets[(i + 1 + SCALE_LENGTH) % SCALE_LENGTH] - offsets[i];
+					if (i != SCALE_LENGTH - 1)
+					{
+						// move up one scale degree
+						voice += offsets[(i + 1 + SCALE_LENGTH) % SCALE_LENGTH] - offsets[i];
+					}
+					else
+					{
+						voice += offsets[(i + 1 + SCALE_LENGTH) % SCALE_LENGTH] - offsets[i] + 12;
+					}
 				}
 				else
 				{
-					// move down one scale degree
-					voice += offsets[(i - 1 + SCALE_LENGTH) % SCALE_LENGTH] - offsets[i];
+
+					if (i != 0)
+					{
+						// move down one scale degree
+						voice += offsets[(i - 1 + SCALE_LENGTH) % SCALE_LENGTH] - offsets[i];
+					}
+					else
+					{
+						voice += offsets[(i - 1 + SCALE_LENGTH) % SCALE_LENGTH] - offsets[i] - 12;
+					}
 				}
 				break;
 			}
 		}
 	}
 
-	triad[0] = voice;
+	return voice;
 }
 
 int calcDistance(int* x, int* y, int l)
