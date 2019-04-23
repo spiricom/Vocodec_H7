@@ -76,17 +76,10 @@ typedef enum Direction {
 	DOWN
 } Direction;
 
-typedef enum NoteType {
-	NEITHER = 0,
-	PLAYED,
-	SUNG
-} NoteType;
-
 int sungNote = -1;
 int prevSungNote = -1;
 int playedNote = -1;
 int prevPlayedNote = -1;
-int latchedNote = -1;
 
 int prevPitchDetectedNote = -1;
 int pitchDetectedSeq = 0;
@@ -97,8 +90,6 @@ int lastTriad[3];
 int shouldVoice = 0;
 int lastSingleVoice = -1;
 
-NoteType harmonizeMoved = NEITHER;
-
 int harmonizerKey = 0;
 int harmonizerScale = 0;
 int harmonizerComplexity = 0;
@@ -108,8 +99,6 @@ int harmonizerMode = 0;
 int harmonizeStep = -1;
 int harmonizerSuccess = 0;
 int computedFirst = 0;
-
-InputMode harmonizerInputMode = Momentary;
 
 // Delay
 float hpFreqDel = 20.0f;
@@ -492,13 +481,15 @@ void SFXHarmonizeFrame()
 		harmonizerComplexity = (int) floor(knobVals[2] * 3.0f + 0.5f);
 		if (harmonizerMode == 0 || harmonizerMode == 1)
 		{
-			 if (harmonizerComplexity > 1) {
+			 if (harmonizerComplexity > 1) 
+			 {
 				 harmonizerComplexity = 1;
 			 }
 		}
 		else if (harmonizerMode == 2)
 		{
-			if (harmonizerComplexity > 2) {
+			if (harmonizerComplexity > 2) 
+			{
 				 harmonizerComplexity = 2;
 			 }
 		}
@@ -511,19 +502,6 @@ void SFXHarmonizeFrame()
 	mpolyMonoNote = tMPoly_getPitch(&mpoly, 0);
 	mpolyMonoVel = tMPoly_getVelocity(&mpoly, 0);
 
-	// set playedNote based on whether latching is turned on
-	if (harmonizerInputMode == Latch)
-	{
-		if (mpolyMonoVel > 0)
-		{
-			latchedNote = mpolyMonoNote;
-		}
-	}
-	else
-	{
-		latchedNote = -1;
-	}
-
 	if (mpolyMonoVel > 0)
 	{
 		playedNote = mpolyMonoNote;
@@ -535,17 +513,10 @@ void SFXHarmonizeFrame()
 
 	if (prevSungNote != sungNote || prevPlayedNote != playedNote)
 	{
-		if (harmonizeStep == -1) {
+		if (harmonizeStep == -1) 
+		{
 			harmonizeStep = 0;
-			if (prevPlayedNote != playedNote)
-			{
-				harmonizeMoved = PLAYED;
-			} else {
-				harmonizeMoved = SUNG;
-			}
 		}
-	}  else {
-		harmonizeMoved = NONE;
 	}
 
 	// step through computation
@@ -644,7 +615,7 @@ int32_t SFXHarmonizeTick(int32_t input)
 
 	for (int i = 0; i < harmonizerComplexity; i++)
 	{
-		output += tPitchShift_shiftToFreq(&pshift[i], LEAF_midiToFrequency(triad[i] + (transpose * 12))) * tRamp_sample(&ramp[i + 1]);
+		output += tPitchShift_shiftToFreq(&pshift[i], LEAF_midiToFrequency(triad[i] + (transpose * 12))) * tRamp_sample(&ramp[i]);
 	}
 
 	output = tFormantShifter_add(&fs, output, 0.0f) * 0.5f;
@@ -940,18 +911,8 @@ int harmonize()
 		// section 1
 
 		int* offsets;
-		int computedNote;
 
-		if (harmonizerInputMode == Latch)
-		{
-			computedNote = latchedNote;
-		}
-		else
-		{
-			computedNote = playedNote;
-		}
-
-		if (sungNote == -1 || computedNote == -1 || inKey(computedNote) == 0)
+		if (sungNote == -1 || playedNote == -1 || inKey(playedNote) == 0)
 		{
 			return 0;
 		}
@@ -968,7 +929,7 @@ int harmonize()
 		int startIndex = -1;
 		for (int i = 0; i < SCALE_LENGTH; i++)
 		{
-			if ((computedNote % 12 - harmonizerKey + 12) % 12 == offsets[i])
+			if ((playedNote % 12 - harmonizerKey + 12) % 12 == offsets[i])
 			{
 				startIndex = i;
 				break;
@@ -996,18 +957,8 @@ int harmonize()
 	{
 		// section 2
 		int* offsets;
-		int computedNote;
 
-		if (harmonizerInputMode == Latch)
-		{
-			computedNote = latchedNote;
-		}
-		else
-		{
-			computedNote = playedNote;
-		}
-
-		if (sungNote == -1 || computedNote == -1 || inKey(computedNote) == 0)
+		if (sungNote == -1 || playedNote == -1 || inKey(playedNote) == 0)
 		{
 			return 0;
 		}
@@ -1069,7 +1020,7 @@ void voice()
 	int evalTriad[3];
 	copyTriad(triad, evalTriad);
 
-    // first inversion up
+    // root position
     evalTriad[0] = evalTriad[0] + 12;
     sortTriad(evalTriad);
 
@@ -1094,11 +1045,27 @@ void voice()
 		}
     }
 
-    // second inversion up
+    // first inversion up
     evalTriad[0] = evalTriad[0] + 12;
     sortTriad(evalTriad);
 
-    // one octave positive transpose of original triad
+	distance = calcDistance(evalTriad, lastTriad, TRIAD_LENGTH);
+    if (harmonizerMode != 3)
+	{
+		if (distance < bestDistance)
+		{
+			copyTriad(evalTriad, triad);
+		}
+	}
+	else
+	{
+		if (distance > bestDistance)
+		{
+			copyTriad(evalTriad, triad);
+		}
+	}
+
+    // second inversion up
     evalTriad[0] = evalTriad[0] + 12;
     sortTriad(evalTriad);
 
@@ -1108,11 +1075,11 @@ void voice()
     	evalTriad[i] = evalTriad[i] - 24;
     }
 
-    // first inversion down
+    // second inversion down
     evalTriad[0] = evalTriad[0] + 12;
     sortTriad(evalTriad);
 
-    // second inversion down
+    // first inversion down
     evalTriad[0] = evalTriad[0] + 12;
     sortTriad(evalTriad);
 
@@ -1140,25 +1107,18 @@ int voiceSingle(int* offsets, Direction dir)
 	copyTriad(triad, evalTriad);
 
 	// transpose triad notes to be strictly greater or less than sung note
-	if (dir == UP) {
-		for (int i = 0; i < TRIAD_LENGTH; i++)
-		{
-			if (evalTriad[i] < sungNote)
-			{
-				evalTriad[i] = evalTriad[i] + 12;
-			}
-		}
-	}
-	else
+	for (int i = 0; i < TRIAD_LENGTH; i++)
 	{
-		for (int i = 0; i < TRIAD_LENGTH; i++)
+		if (evalTriad[i] < sungNote && dir == UP)
 		{
-			if (evalTriad[i] > sungNote)
-			{
-				evalTriad[i] = evalTriad[i] - 12;
-			}
+			evalTriad[i] = evalTriad[i] + 12;
+		}
+		else if (evalTriad[i] > sungNote && dir == DOWN)
+		{
+			evalTriad[i] = evalTriad[i] - 12;
 		}
 	}
+
 
 	// sort triad relative to sungNote
 	sortTriadRelative(evalTriad);
@@ -1174,7 +1134,7 @@ int voiceSingle(int* offsets, Direction dir)
 			break;
 		}
 	}
-
+	
 	int voice = evalTriad[0];
 
 	if (chordTone == 1)
