@@ -48,7 +48,7 @@ float feedbackDelayPeriod[NUM_FB_DELAY_TABLES];
 const int majorOffsets[7] = {0, 2, 4, 5, 7, 9, 11};
 const int minorOffsets[7] = {0, 2, 3, 5, 7, 8, 10};
 
-int count = 0;
+int sfxCount = 0;
 
 /* PARAMS */
 // Vocoder
@@ -88,7 +88,12 @@ int triad[3];
 int tempTriad[3];
 int lastTriad[3];
 int shouldVoice = 0;
-int lastSingleVoice = -1;
+int singleVoice = 0;
+int prevSingleVoice = -1;
+
+int randomOptions[6];
+int randomOctaveIndex[6];
+int numRandomOptions = 1;
 
 int harmonizerKey = 0;
 int harmonizerScale = 0;
@@ -143,6 +148,11 @@ float detuneMaxSynth = 3.0f;
 float inputLevel = 1.0f;
 float outputLevel = 1.0f;
 
+//Debug variables
+float unroundedNote;
+int pitchDetectedNote;
+int dummyValue;
+
 uint8_t numActiveVoices[ModeCount];
 
 /* PSHIFT vars *************/
@@ -177,10 +187,13 @@ int voiceSingle(int* offsets, Direction dir);
 int inKey(int note);
 int calcDistance(int* x, int* y, int l);
 int copyTriad(int* src, int* dest);
+int isChordTone(int note, int* chord);
 void sortTriad(int* x);
 void sortTriadRelative(int* x);
 void voiceAvoid(int* x);
 void swap(int* x, int i, int j);
+int pickFromRandom();
+void resetRandom();
 
 /****************************************************************************************/
 
@@ -397,7 +410,7 @@ int32_t SFXPitchShiftTick(int32_t input)
 
 	if (formantCorrect[PitchShiftMode] > 0) output = tFormantShifter_add(&fs, output, 0.0f) * 0.5f;
 
-	count++;
+	sfxCount++;
 
 	return (int32_t) (output * TWO_TO_31);
 }
@@ -547,6 +560,7 @@ int32_t SFXHarmonizeTick(int32_t input)
 	float sample = 0.0f;
 	float output = 0.0f;
 	float freq;
+	int sequenceThreshold = 32;
 
 	tMPoly_tick(&mpoly);
 
@@ -558,23 +572,42 @@ int32_t SFXHarmonizeTick(int32_t input)
 	freq = leaf.sampleRate / tPeriod_findPeriod(&p, sample);
 
 	// sungNote smoothing
-	int pitchDetectedNote = round(LEAF_frequencyToMidi(freq));
+	unroundedNote = LEAF_frequencyToMidi(freq);
+	pitchDetectedNote = round(unroundedNote);
 	if (pitchDetectedNote != sungNote)
 	{
+		if (abs(pitchDetectedNote - sungNote) > 12) sequenceThreshold = 2048;
+		else sequenceThreshold = 32;
+
 		if (pitchDetectedNote == prevPitchDetectedNote)
 		{
 			pitchDetectedSeq++;
 
 			// wait for # of same pitchDetected notes in a row, then change
-			if (pitchDetectedSeq > 2048)
+			if (pitchDetectedSeq > sequenceThreshold)
 			{
-				if (pitchDetectedNote <= 127 && pitchDetectedNote >= 0)
+				if (pitchDetectedNote <= 89 && pitchDetectedNote >= 32)
 				{
 					sungNote = pitchDetectedNote;
 				}
 			}
 		}
-		else
+		//if it's only a semitone away, notes have to be closer to the new note
+		else if (pitchDetectedNote == prevPitchDetectedNote + 1)
+		{
+			if (pitchDetectedNote - unroundedNote < 0.25)
+			{
+				sungNote = pitchDetectedNote;
+			}
+		}
+		else if (pitchDetectedNote == prevPitchDetectedNote - 1)
+		{
+			if (unroundedNote - pitchDetectedNote < 0.25)
+			{
+				sungNote = pitchDetectedNote;
+			}
+		}
+		else if (pitchDetectedNote > 32 && pitchDetectedNote < 89) //trying to filter out noise
 		{
 			pitchDetectedSeq = 0;
 			prevPitchDetectedNote = pitchDetectedNote;
@@ -975,10 +1008,14 @@ int harmonize()
 		if (harmonizerMode == 0)
 		{
 			triad[0] = voiceSingle(offsets, UP);
+			prevSingleVoice = singleVoice;
+			singleVoice = triad[0];
 		}
 		else if (harmonizerMode == 1)
 		{
 			triad[0] = voiceSingle(offsets, DOWN);
+			prevSingleVoice = singleVoice;
+			singleVoice = triad[0];
 		}
 		else if (harmonizerMode == 2)
 		{
@@ -1100,7 +1137,7 @@ void voice()
 	}
 }
 
-// TODO: free up constraints on playedNote changes, think about lastSingleVoice
+// TODO: free up constraints on playedNote changes, think about prevSingleVoice
 int voiceSingle(int* offsets, Direction dir)
 {
 	int evalTriad[3];
@@ -1124,16 +1161,7 @@ int voiceSingle(int* offsets, Direction dir)
 	sortTriadRelative(evalTriad);
 
 	// detect whether the sungNote is a chord tone or not
-	int chordTone = 0;
-
-	for (int i = 0; i < TRIAD_LENGTH; i++)
-	{
-		if ((sungNote - harmonizerKey) % 12 == (evalTriad[i] - harmonizerKey) % 12)
-		{
-			chordTone = 1;
-			break;
-		}
-	}
+	int chordTone = isChordTone(sungNote, evalTriad);
 	
 	int voice = evalTriad[0];
 
@@ -1145,28 +1173,71 @@ int voiceSingle(int* offsets, Direction dir)
 			if (evalTriad[i] != sungNote)
 			{
 				voice = evalTriad[i];
-				break;
+				if (prevSingleVoice > 0 && abs(voice - prevSingleVoice) > 12)
+				{
+					//for debugging
+					dummyValue++;
+				}
+				return voice;
 			}
 		}
 	}
 	else
 	{
-		// find closest none chord tone harmonization
+		numRandomOptions = 0;
+		//option 1: keep the note the same
+		if (prevSingleVoice > 0 && abs(sungNote - prevSingleVoice) <= 12)
+		{
+			if (isChordTone(prevSingleVoice, evalTriad))
+			{
+				randomOptions[numRandomOptions++] = prevSingleVoice;
+			}
+		}
+
+		//option 2: leap to nearest chord tone
+		for (int i = 0; i < TRIAD_LENGTH; i++)
+		{
+			if (evalTriad[i] != prevSingleVoice)
+			{
+				if (dir == UP)
+				{
+					if (evalTriad[i] > sungNote)
+					{
+						randomOptions[numRandomOptions++] = evalTriad[i];
+						break;
+					}
+				}
+				else
+				{
+					if (evalTriad[i] < sungNote)
+					{
+						randomOptions[numRandomOptions++] = evalTriad[i];
+						break;
+					}
+				}
+			}
+		}
+
+		// find closest non chord tone harmonization
 		for (int i = 0; i < SCALE_LENGTH; i++)
 		{
 			if (offsets[i] == (voice - harmonizerKey) % 12)
 			{
-				// make sure it moves to a non-chord tone in the direction of the melody
+				// make sure it moves in the direction of the melody or stays the same
+
+				//option 2: move 1 scale degree to a non-chord tone
 				if (dir == UP)
 				{
 					if (i != SCALE_LENGTH - 1)
 					{
+						randomOptions[numRandomOptions++] = voice + offsets[(i + 1 + SCALE_LENGTH) % SCALE_LENGTH] - offsets[i];
 						// move up one scale degree
-						voice += offsets[(i + 1 + SCALE_LENGTH) % SCALE_LENGTH] - offsets[i];
+						//voice += offsets[(i + 1 + SCALE_LENGTH) % SCALE_LENGTH] - offsets[i];
 					}
 					else
 					{
-						voice += offsets[(i + 1 + SCALE_LENGTH) % SCALE_LENGTH] - offsets[i] + 12;
+						randomOptions[numRandomOptions++] = voice + offsets[(i + 1 + SCALE_LENGTH) % SCALE_LENGTH] - offsets[i] + 12;
+						//voice += offsets[(i + 1 + SCALE_LENGTH) % SCALE_LENGTH] - offsets[i] + 12;
 					}
 				}
 				else
@@ -1175,11 +1246,13 @@ int voiceSingle(int* offsets, Direction dir)
 					if (i != 0)
 					{
 						// move down one scale degree
-						voice += offsets[(i - 1 + SCALE_LENGTH) % SCALE_LENGTH] - offsets[i];
+						//voice += offsets[(i - 1 + SCALE_LENGTH) % SCALE_LENGTH] - offsets[i];
+						randomOptions[numRandomOptions++] = voice + offsets[(i - 1 + SCALE_LENGTH) % SCALE_LENGTH] - offsets[i];
 					}
 					else
 					{
-						voice += offsets[(i - 1 + SCALE_LENGTH) % SCALE_LENGTH] - offsets[i] - 12;
+						//voice += offsets[(i - 1 + SCALE_LENGTH) % SCALE_LENGTH] - offsets[i] - 12;
+						randomOptions[numRandomOptions++] = voice + offsets[(i - 1 + SCALE_LENGTH) % SCALE_LENGTH] - offsets[i] - 12;
 					}
 				}
 				break;
@@ -1187,6 +1260,12 @@ int voiceSingle(int* offsets, Direction dir)
 		}
 	}
 
+	voice = pickFromRandom();
+	if (prevSingleVoice > 0 && abs(voice - prevSingleVoice) > 12)
+	{
+		dummyValue++;
+	}
+	resetRandom();
 	return voice;
 }
 
@@ -1287,6 +1366,18 @@ int inKey(int note)
 	return 0;
 }
 
+int isChordTone(int note, int* chord)
+{
+		for (int i = 0; i < TRIAD_LENGTH; i++)
+		{
+			if ((note - harmonizerKey) % 12 == (chord[i] - harmonizerKey) % 12)
+			{
+				return 1;
+			}
+		}
+	return 0;
+}
+
 
 void calculateFreq(int voice)
 {
@@ -1375,4 +1466,39 @@ float interpolateFeedback(float raw_data)
 	{
 		return (FeedbackLookup[3] + ((FeedbackLookup[4] - FeedbackLookup[3]) * ((scaled_raw - 0.95f) * 20.0f )));
 	}
+}
+
+int pickFromRandom()
+{
+	int octaveFourIndex = 0;
+	int octaveFiveIndex = 0;
+	int defaultOctave = 4;
+
+	//adjusts random options to be in the same octave
+	for (int i = 0; i < numRandomOptions; i++)
+	{
+		randomOctaveIndex[i] = randomOptions[i] / 12;
+		if (randomOctaveIndex[i] == 4) octaveFourIndex++;
+		else if (randomOctaveIndex[i] == 5) octaveFiveIndex++;
+	}
+
+	if (octaveFourIndex < octaveFiveIndex) defaultOctave = 5;
+	else if (octaveFourIndex == 0 && octaveFiveIndex == 0) defaultOctave = 0;
+
+	if (defaultOctave > 0)
+	{
+		for (int i = 0; i < numRandomOptions; i++)
+		{
+			if (randomOctaveIndex[i] > 5) randomOptions[i] -= 12 * (randomOctaveIndex[i] - 5);
+			else if (randomOctaveIndex[i] < 4) randomOptions[i] += 12 * (4 - randomOctaveIndex[i]);
+		}
+	}
+
+	int randomChoice = randomOptions[(int) (randomNumber() * numRandomOptions)];
+	return randomChoice;
+}
+
+void resetRandom()
+{
+	numRandomOptions = 0;
 }
